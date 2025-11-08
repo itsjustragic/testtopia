@@ -5,21 +5,11 @@ FastAPI leaderboard backend for Kenzies Fridge.
 Usage:
     pip install fastapi uvicorn
     python -m uvicorn main:app --reload
-
-Serves:
- - GET  /api/leaderboard?limit=100
- - GET  /api/user/{user_id}
- - POST /api/user/{user_id}        body: {"nickname": "...", "balance": 123.45, "trades":0, "wins":0, "period_start_balance":5000}
- - POST /api/user/{user_id}/trade body: {"result":"win"|"lose", "amount": 12.34, "nickname":"..."}  (records a trade and optionally updates nickname)
- - POST /api/close_month
- - GET  /api/winners/{month}
- - GET  /api/winners
-Additionally serves static files from ./static/
-Data stored in ./data/leaderboard.json
 """
 import os
 import json
 import threading
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
@@ -30,7 +20,6 @@ from pydantic import BaseModel, Field
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 # default starting balance for new users
 START_BALANCE = 5000.0
@@ -52,10 +41,10 @@ def _now_iso():
 def _read_db() -> Dict[str, Any]:
     if not os.path.exists(DB_PATH):
         default = {
-            "users": {},  # userId -> { nickname, balance, last_update, trades, wins, period_start_balance }
-            "monthly_winners": {},  # "YYYY-MM" -> { "podium": [...], "closed_at": ISO }
+            "users": {},
+            "monthly_winners": {},
             "last_month_closed": None,
-            "recent_trades": []  # newest-first
+            "recent_trades": []
         }
         with open(DB_PATH, "w", encoding="utf-8") as f:
             json.dump(default, f, indent=2)
@@ -73,7 +62,6 @@ def _read_db() -> Dict[str, Any]:
             }
 
 def _write_db(data: Dict[str, Any]):
-    # write atomically
     tmp = DB_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -204,6 +192,24 @@ def debug_static_files():
         "listing_sample": listing[:200] if isinstance(listing, list) else listing,
     }
 
+# ----------------------------
+# Utilities: canonicalize & validate user ids
+# ----------------------------
+_USERID_RE = re.compile(r"^[a-z0-9\-_]{3,64}$")
+
+def normalize_user_id(uid: str) -> str:
+    if uid is None:
+        return ""
+    return str(uid).strip().lower()
+
+def validate_user_id(uid: str) -> bool:
+    if not uid:
+        return False
+    return bool(_USERID_RE.match(uid))
+
+# ----------------------------
+# API endpoints
+# ----------------------------
 @app.get("/api/leaderboard")
 def get_leaderboard(limit: int = 100):
     with _lock:
@@ -225,13 +231,16 @@ def get_leaderboard(limit: int = 100):
 
 @app.get("/api/user/{user_id}")
 def get_user(user_id: str):
+    uid = normalize_user_id(user_id)
+    if not validate_user_id(uid):
+        raise HTTPException(status_code=400, detail="invalid user_id format")
     with _lock:
         db = _read_db()
-    user = db.get("users", {}).get(user_id)
+    user = db.get("users", {}).get(uid)
     if user:
         metrics = compute_user_metrics(user)
         return {
-            "user_id": user_id,
+            "user_id": uid,
             "nickname": user.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
@@ -243,7 +252,7 @@ def get_user(user_id: str):
         }
     else:
         return {
-            "user_id": user_id,
+            "user_id": uid,
             "nickname": "",
             "balance": round(START_BALANCE, 2),
             "performance": 0.0,
@@ -256,19 +265,31 @@ def get_user(user_id: str):
 
 @app.post("/api/user/{user_id}")
 def update_user(user_id: str, upd: UserUpdate):
+    uid = normalize_user_id(user_id)
+    if not validate_user_id(uid):
+        raise HTTPException(status_code=400, detail="invalid user_id format")
+
+    created = False
+    changed_nick = None
     with _lock:
         db = _read_db()
         users = db.setdefault("users", {})
-        u = users.setdefault(user_id, {
-            "nickname": "",
-            "balance": START_BALANCE,
-            "last_update": None,
-            "trades": 0,
-            "wins": 0,
-            "period_start_balance": START_BALANCE
-        })
 
-        changed_nick = None
+        # detect existence with canonical uid to avoid duplicates
+        if uid not in users:
+            # create once (canonicalized) - this avoids duplicate records for same id with different casing/whitespace
+            users[uid] = {
+                "nickname": "",
+                "balance": START_BALANCE,
+                "last_update": None,
+                "trades": 0,
+                "wins": 0,
+                "period_start_balance": START_BALANCE
+            }
+            created = True
+
+        u = users[uid]
+
         if upd.nickname is not None:
             n = (upd.nickname or "").strip()[:40]
             if n != u.get("nickname", ""):
@@ -305,7 +326,7 @@ def update_user(user_id: str, upd: UserUpdate):
             recent = db.setdefault("recent_trades", [])
             for ent in recent:
                 try:
-                    if ent.get("user_id") == user_id:
+                    if ent.get("user_id") == uid:
                         ent["nickname"] = changed_nick
                 except Exception:
                     pass
@@ -314,9 +335,9 @@ def update_user(user_id: str, upd: UserUpdate):
         metrics = compute_user_metrics(u)
 
     resp = {
-        "status": "ok",
+        "status": "created" if created else "ok",
         "user": {
-            "user_id": user_id,
+            "user_id": uid,
             "nickname": u.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
@@ -333,19 +354,30 @@ def update_user(user_id: str, upd: UserUpdate):
 
 @app.post("/api/user/{user_id}/trade")
 def record_trade(user_id: str, tr: TradeRecord):
+    uid = normalize_user_id(user_id)
+    if not validate_user_id(uid):
+        raise HTTPException(status_code=400, detail="invalid user_id format")
+
+    changed_nick = None
+    created = False
     with _lock:
         db = _read_db()
         users = db.setdefault("users", {})
-        u = users.setdefault(user_id, {
-            "nickname": "",
-            "balance": START_BALANCE,
-            "last_update": None,
-            "trades": 0,
-            "wins": 0,
-            "period_start_balance": START_BALANCE
-        })
 
-        changed_nick = None
+        # ensure canonical user exists exactly once
+        if uid not in users:
+            users[uid] = {
+                "nickname": "",
+                "balance": START_BALANCE,
+                "last_update": None,
+                "trades": 0,
+                "wins": 0,
+                "period_start_balance": START_BALANCE
+            }
+            created = True
+
+        u = users[uid]
+
         if tr.nickname is not None:
             n = (tr.nickname or "").strip()[:40]
             if n != u.get("nickname", ""):
@@ -354,7 +386,7 @@ def record_trade(user_id: str, tr: TradeRecord):
                 recent = db.setdefault("recent_trades", [])
                 for ent in recent:
                     try:
-                        if ent.get("user_id") == user_id:
+                        if ent.get("user_id") == uid:
                             ent["nickname"] = changed_nick
                     except Exception:
                         pass
@@ -389,7 +421,7 @@ def record_trade(user_id: str, tr: TradeRecord):
 
         trade_entry = {
             "ts": u["last_update"],
-            "user_id": user_id,
+            "user_id": uid,
             "nickname": u.get("nickname", "") or "",
             "result": res,
             "amount": round(amt, 2)
@@ -405,9 +437,9 @@ def record_trade(user_id: str, tr: TradeRecord):
         metrics = compute_user_metrics(u)
 
     resp = {
-        "status": "ok",
+        "status": "created" if created else "ok",
         "user": {
-            "user_id": user_id,
+            "user_id": uid,
             "nickname": u.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
