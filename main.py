@@ -1,2752 +1,518 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>Kenzies Fridge</title>
-<meta name="description" content="Welcome to Kenzies fridge!">
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-
-<!-- Open Graph / Social -->
-<meta property="og:title" content="Kenzies Fridge">
-<meta property="og:description" content="Welcome to kenzies fridge!">
-<meta property="og:image" content="https://raw.githubusercontent.com/kenzibets/kenztopia/main/static/image/Screenshot%202025-11-07%20233505.png">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Kenzies Fridge">
-<meta name="twitter:description" content="Welcome to kenzies fridge!">
-<meta name="twitter:image" content="https://raw.githubusercontent.com/kenzibets/kenztopia/main/static/image/Screenshot%202025-11-07%20233505.png">
-
-<link rel="icon" href="https://pngfre.com/wp-content/uploads/monster-energy-drink-37.png" />
-
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&family=Nosifer&display=swap" rel="stylesheet">
-<style>
-:root{
-  --accent-green:#0cf04a;
-  --muted:#bfc7c3;
-  --bg:#070606;
-}
-/* Base */
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#060606,#0b0b0b);color:#fff;font-family:Rubik,system-ui,-apple-system,"Segoe UI",Roboto,Arial;overflow:hidden}
-::-webkit-scrollbar { width: 0; height: 0 }
-body { scrollbar-width: none; -ms-overflow-style: none; }
-
-/* background + green streak */
-body::before{
-  content:""; position:fixed; inset:0; z-index:-3;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(8,8,8,0.85) 100%),
-    url('https://source.unsplash.com/1600x900/?grunge,black,wall') center/cover no-repeat;
-  mix-blend-mode:multiply; opacity:0.95;
-}
-body::after{
-  content:""; position:fixed; left:-20%; top:-10%; width:140%; height:120%; z-index:-2;
-  background: radial-gradient(40% 60% at 10% 20%, rgba(12,240,74,0.06), transparent 8%),
-              radial-gradient(30% 60% at 80% 80%, rgba(12,240,74,0.035), transparent 12%);
-  filter:blur(18px); pointer-events:none;
-}
-
-/* layout */
-.wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:28px;overflow:auto}
-.card{width:1150px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.45));border-radius:12px;padding:18px;box-shadow:0 28px 80px rgba(0,0,0,0.95);display:grid;grid-template-columns:1fr 440px;gap:18px;border:4px solid rgba(0,0,0,0.7)}
-header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding-bottom:6px}
-header h1{margin:0;font-size:24px;letter-spacing:1px;font-weight:900;color:var(--accent-green)}
-.subtitle{color:var(--muted);font-size:13px}
-
-/* Socials moved to left styling */
-.header-left { display:flex; gap:12px; align-items:center; }
-
-/* Social icons (now on left) */
-.socials{display:flex;gap:10px;align-items:center}
-.social-link{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.018);border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform .12s, box-shadow .12s}
-.social-link img{width:20px;height:20px;filter:brightness(1.05) saturate(1.1) invert(0);opacity:0.98}
-.social-link:hover{transform:translateY(-4px); box-shadow:0 12px 40px rgba(12,240,74,0.12), 0 0 18px rgba(12,240,74,0.18);}
-
-/* neon glow for icons */
-.social-link.neon img{filter: drop-shadow(0 6px 14px rgba(12,240,74,0.18)) drop-shadow(0 0 8px rgba(12,240,74,0.22));}
-.social-link.neon{box-shadow: 0 6px 20px rgba(12,240,74,0.08), inset 0 0 8px rgba(12,240,74,0.02); border: 1px solid rgba(12,240,74,0.08)}
-
-/* LEADERBOARD BUTTON - moved into left title area, neon green style */
-#leaderboardBtn {
-  margin-left:12px;
-  background: linear-gradient(180deg,#0cf04a,#08a132);
-  border:none;
-  color:#04220b;
-  padding:8px 12px;
-  border-radius:10px;
-  font-weight:900;
-  cursor:pointer;
-  box-shadow: 0 8px 30px rgba(12,240,74,0.12), 0 0 18px rgba(12,240,74,0.18), 0 0 40px rgba(12,240,74,0.06) inset;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
-}
-#leaderboardBtn:hover { transform: translateY(-2px); transition: transform .12s; }
-
-/* RAINBET button (beside leaderboard) */
-#rainbetBtn{
-  margin-left:8px;
-  background: linear-gradient(180deg,#00d976,#0ab83f);
-  border:none;
-  color:#041b09;
-  padding:8px 12px;
-  border-radius:10px;
-  font-weight:900;
-  cursor:pointer;
-  display:inline-flex;align-items:center;gap:8px;
-  box-shadow: 0 8px 30px rgba(12,240,74,0.09), 0 0 18px rgba(12,240,74,0.12);
-}
-#rainbetBtn img{width:18px;height:18px;display:inline-block}
-#rainbetBtn:hover{ transform:translateY(-3px) }
-
-/* board */
-.board-area{padding:8px;border-radius:8px;Display:flex;flex-direction:column;gap:12px;align-items:center;position:relative;overflow:visible}
-.controls{display:flex;align-items:center;gap:10px;width:100%;justify-content:space-between}
-.left-controls{display:flex;gap:12px;align-items:center}
-.btn{background:linear-gradient(180deg,#0bf04a,#0a7e2e);border:none;padding:12px 20px;border-radius:10px;color:#050505;font-weight:900;cursor:pointer;box-shadow:0 10px 22px rgba(11,180,60,0.08)}
-.small{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
-input[type=number]{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;color:var(--muted);border-radius:8px}
-
-/* board grid (5 x 3) */
-.board{display:grid;grid-template-columns: repeat(5, 1fr);gap:12px;align-items:stretch;justify-items:stretch;padding:10px;background:linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.14));border-radius:12px;border-left:10px solid rgba(0,0,0,0.9);position:relative;min-height:360px}
-.col{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.25));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;position:relative;border-top:6px solid rgba(0,0,0,0.9);transition:transform .18s}
-.cell{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:8px;background:rgba(0,0,0,0.04);border-radius:6px}
-.cell img{width:92px;height:92px;object-fit:contain;transition:transform .35s,filter .25s}
-.cell .name{font-size:12px;color:var(--muted);margin-top:8px}
-
-/* multiplier overlay per column */
-.col .col-mult{position:absolute;left:50%;transform:translateX(-50%);top:8px;font-family:"Nosifer","Rubik",sans-serif;font-size:46px;color:var(--accent-green);pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,0.9);opacity:0.95;transition:transform .25s,opacity .18s;letter-spacing:6px}
-.col .col-mult.small{font-size:28px;top:auto;bottom:12px;opacity:.7}
-.col .col-mult.hidden{opacity:0;transform:translateX(-50%) scale(.92)}
-
-/* states */
-.col.spinning img{transform:translateY(-6px) scale(.98)}
-.col.win{box-shadow:0 12px 44px rgba(12,240,74,0.22), inset 0 0 18px rgba(12,240,74,0.06);transform:translateY(-6px);transition:transform .22s}
-.col.bigwin{animation:colBig .9s ease 0s 1}
-@keyframes colBig{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
-
-/* info area */
-.info{background:linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.18));padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:12px}
-.balance{font-size:36px;font-weight:900;color:var(--accent-green);letter-spacing:1px}
-.muted{color:var(--muted);font-size:13px}
-.payout-board{background:rgba(0,0,0,0.25);padding:12px;border-radius:6px;max-height:220px;overflow:auto;font-size:14px;line-height:1.28}
-.payout-board img { width:40px;height:40px }
-.history{background:rgba(0,0,0,0.2);padding:12px;border-radius:6px;max-height:260px;overflow:auto;font-size:14px;line-height:1.28}
-.history-item{display:flex;justify-content:space-between;padding:6px 0;align-items:center;opacity:0;animation:slideIn .32s ease forwards}
-@keyframes slideIn{to{opacity:1;transform:none}from{opacity:0;transform:translateY(-8px)}}
-
-/* Win overlay (center) */
-.win-overlay {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(0.95);
-  z-index: 10000;
-  min-width: 360px;
-  max-width: 86%;
-  background: rgba(8,8,8,0.95);
-  color: #fff;
-  border-radius: 12px;
-  padding: 18px 22px;
-  text-align: center;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.8);
-  pointer-events: none;
-  opacity: 0;
-}
-.win-overlay .title { font-family: Nosifer, Rubik, sans-serif; font-size: 28px; margin: 2px 0; letter-spacing: 2px; color: var(--accent-green); }
-.win-overlay .amount { font-weight: 900; font-size: 34px; margin-top: 6px; }
-.win-overlay.small { background: linear-gradient(180deg, rgba(0,0,0,0.92), rgba(0,0,0,0.95)); }
-.win-overlay.mid { background: linear-gradient(180deg, rgba(6,20,6,0.96), rgba(10,40,10,0.97)); border: 1px solid rgba(12,240,74,0.08); }
-.win-overlay.jackpot { background: linear-gradient(180deg, rgba(50,5,5,0.96), rgba(90,10,10,0.98)); border: 2px solid rgba(255,215,0,0.18); }
-.win-overlay.maxwin { background: linear-gradient(180deg, rgba(12,60,12,0.96), rgba(12,120,12,0.98)); border: 2px solid rgba(12,240,74,0.22); box-shadow: 0 40px 120px rgba(12,240,74,0.18); color: #dbffd9; }
-.win-overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1); transition: all 560ms cubic-bezier(.2,.9,.2,1); pointer-events: auto; }
-@keyframes popScale { 0%{transform: translate(-50%,-50%) scale(0.7)} 60%{transform: translate(-50%,-50%) scale(1.08)} 100%{transform: translate(-50%,-50%) scale(1)} }
-.win-overlay.pop { animation: popScale 700ms cubic-bezier(.2,.9,.2,1); }
-.win-overlay.pulse { animation: pulse 900ms ease-in-out; }
-@keyframes pulse { 0% { transform: translate(-50%,-50%) scale(.9); } 50% { transform: translate(-50%,-50%) scale(1.03); } 100% { transform: translate(-50%,-50%) scale(1); } }
-
-/* music player: compact and playlist scrolls inside box */
-.player{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.12);padding:8px;border-radius:8px;max-height:360px}
-.player .playlist{background:rgba(0,0,0,0.06);padding:6px;border-radius:6px;max-height:140px;overflow:auto}
-.player .progress{height:8px;background:rgba(255,255,255,0.04);border-radius:999px;position:relative;cursor:pointer}
-.player .progress .bar{height:100%;background:linear-gradient(90deg,var(--accent-green),#6ff29a);width:0;border-radius:999px;transition:width .08s linear}
-.player .time{font-size:12px;color:var(--muted);min-width:90px;text-align:right}
-
-/* memetopia modal */
-.modal-overlay { position: fixed; inset:0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:12000; pointer-events:none; opacity:0; transition:all .28s ease; }
-.modal-overlay.active { pointer-events:auto; opacity:1; display:flex; }
-.modal { background: #0c0c0c; padding:18px 20px; border-radius:10px; color:#fff; min-width:320px; max-width:92%; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,0.6); }
-.continue-btn { border: none; padding:10px 16px; border-radius:8px; font-weight:900; cursor:pointer; margin-top:12px; background: linear-gradient(180deg,#0bf04a,#0a7e2e); color:#050505; }
-.continue-btn.flash { animation: flashBtn 1200ms infinite; }
-@keyframes flashBtn { 0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)} }
-
-/* responsive */
-@media (max-width:1200px){ .card{width:95%} .cell img{width:72px;height:72px} }
-.hidden{display:none}
-
-/* Leaderboard modal styles (full centered modal) */
-#kf-leaderboard-modal .modal { max-width:980px; width:95%; padding:20px 22px; }
-.kf-leaderboard-grid { display:grid; grid-template-columns: 1fr 320px; gap:12px; align-items:start; }
-.kf-leaderboard-main { background: rgba(0,0,0,0.06); padding:10px; border-radius:8px; max-height:520px; overflow:auto; }
-.kf-leaderboard-right { background: rgba(0,0,0,0.04); padding:10px; border-radius:8px; max-height:520px; overflow:auto; }
-
-/* Leaderboard hero header to look like the image */
-.kf-leaderboard-hero{
-  display:flex;align-items:center;gap:14px;justify-content:space-between;padding:12px 8px 6px;border-bottom:1px solid rgba(255,255,255,0.03);
-}
-.kf-leaderboard-hero h2{Margin:0;font-size:32px;letter-spacing:2px;font-weight:900;color:#fff;text-align:center}
-.kf-leaderboard-hero .muted{color:var(--muted);font-size:13px}
-
-/* Table like the image */
-.kf-table{width:100%;border-collapse:collapse;margin-top:12px}
-.kf-table thead th{font-size:12px;color:var(--muted);text-align:left;padding:12px 12px;border-bottom:1px solid rgba(255,255,255,0.03);font-weight:700}
-.kf-table tbody tr{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));}
-.kf-table td{padding:12px;border-bottom:1px dashed rgba(255,255,255,0.03);vertical-align:middle;font-size:14px}
-.kf-row-left{display:flex;align-items:center;gap:12px;min-width:0}
-.kf-avatar{width:36px;height:36px;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.12));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--muted);flex-shrink:0}
-.kf-username{font-weight:800;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kf-user-meta{display:block;color:var(--muted);font-size:12px;margin-top:4px}
-.kf-perf{font-weight:900;color:var(--accent-green);font-size:15px}
-.kf-perf.negative{color:#ff6b6b}
-.kf-center{color:var(--muted);text-align:center;font-weight:700}
-.kf-trades{color:var(--muted);text-align:right}
-
-/* highlight current user */
-.kf-table tbody tr.me{background: linear-gradient(90deg, rgba(12,240,74,0.03), rgba(255,255,255,0.01));}
-
-/* mobile */
-@media (max-width:720px){
-  .kf-leaderboard-grid { grid-template-columns: 1fr; }
-  .kf-leaderboard-hero h2{font-size:22px}
-}
-
-/* sell feet modal specific */
-#sellFeetModal .modal { max-width:520px; width:92%; padding:20px; text-align:center; }
-#sellFeetModal .title { font-size:20px; color:var(--accent-green); font-weight:900; margin-bottom:6px; }
-#sellFeetModal .msg { color:#fff; margin:10px 0; font-size:15px; }
-#sellFeetModal .small-muted { color:var(--muted); font-size:13px; margin-top:8px; }
-#sellFeetBtn { background: linear-gradient(180deg,#ffb347,#ff7e5f); border: none; color:#050505; font-weight:900; padding:10px 12px; border-radius:8px; cursor:pointer; }
-#sellFeetBtn[disabled] { opacity:0.5; cursor:not-allowed; }
-
-/* Rainbet modal animation + styling (overlay fixed and centered) */
-#rainbetModal {
-  position: fixed;
-  inset: 0;
-  display: none; /* toggled to flex in JS */
-  align-items: center;
-  justify-content: center;
-  z-index: 15000;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .28s ease, transform .28s ease;
-}
-#rainbetModal.active {
-  display: flex;
-  pointer-events: auto;
-  opacity: 1;
-}
-.rain-modal { background: linear-gradient(180deg, rgba(4,10,4,0.98), rgba(8,20,8,0.98)); padding:20px 24px; border-radius:12px; box-shadow: 0 30px 120px rgba(6,30,6,0.8); color:#eaffef; max-width:480px; width:92%; text-align:center; transform:translateY(8px); transition:transform .36s cubic-bezier(.2,.9,.2,1); }
-#rainbetModal.active .rain-modal { transform: translateY(0); }
-.rain-modal .rain-title { font-size:22px; font-weight:900; color:var(--accent-green); letter-spacing:1px; font-family:Nosifer, Rubik, sans-serif; }
-.rain-modal .rain-body { margin-top:8px; font-size:15px; color:#dfffe3; }
-.rain-modal .rain-code { margin-top:14px; font-weight:900; font-size:20px; padding:10px 12px; border-radius:10px; background:linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0.02)); display:inline-block; color:#04220b; }
-.rain-modal .rain-close { margin-top:14px; padding:8px 12px; border-radius:10px; border:none; background:linear-gradient(180deg,#0bf04a,#0a7e2e); cursor:pointer; font-weight:900; color:#050505; }
-.rain-modal .rain-logo { width:36px;height:36px;vertical-align:middle;margin-right:8px;border-radius:6px; }
-
-/* animated confetti dots container */
-#rainConfetti { position:absolute; inset:0; pointer-events:none; z-index:16000; }
-
-/* tiny glow pulse for emphasis */
-@keyframes neonPulse {
-  0% { box-shadow: 0 6px 18px rgba(12,240,74,0.06); transform: translateY(0) }
-  50% { box-shadow: 0 18px 54px rgba(12,240,74,0.14); transform: translateY(-4px) }
-  100% { box-shadow: 0 6px 18px rgba(12,240,74,0.06); transform: translateY(0) }
-}
-.rain-code.pulse { animation: neonPulse 1200ms ease-in-out infinite; }
-
-/* small helper for accessibility */
-.visually-hidden { position:absolute!important; clip:rect(1px,1px,1px,1px); padding:0;border:0;height:1px;width:1px;overflow:hidden;white-space:nowrap }
-
-/* ========================
-   LIVE WINS BOX (NEW)
-   ======================== */
-
-/* fixed middle-right placement */
-#liveWinsBox {
-  position: fixed;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 300px;
-  max-height: 480px;
-  z-index: 14000;
-  background: linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.6));
-  border-radius: 12px;
-  padding: 12px 12px 10px 12px;
-  box-shadow: 0 30px 90px rgba(0,0,0,0.7), 0 6px 30px rgba(12,240,74,0.06);
-  border: 1px solid rgba(12,240,74,0.08);
-  backdrop-filter: blur(6px);
-  color: #eafef0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 13px;
-  align-items: stretch;
-}
-
-/* header with centered live dot */
-#liveWinsBox .lw-header {
-  position: relative;
-  padding-top: 10px;
-  text-align: center;
-}
-#liveWinsBox .lw-title {
-  font-weight: 900;
-  color: var(--accent-green);
-  letter-spacing: 1px;
-  font-size: 15px;
-}
-#liveWinsBox .lw-sub { color: var(--muted); font-size: 12px; margin-top:4px; }
-/* small inner dot removed (no blinking) */
-#liveWinsBox .lw-live-dot::after {
-  display: none;
-}
-
-/* list of recent events */
-#liveWinsList {
-  display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:260px;padding-right:6px;
-}
-.lw-item {
-  display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.02);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
-  font-size: 13px;
-}
-.lw-item.win { border-left: 4px solid rgba(12,240,74,0.9); }
-.lw-item.lose { border-left: 4px solid rgba(255,100,100,0.9); }
-.lw-item .left { display:flex;gap:8px;align-items:center;min-width:0 }
-.lw-item .ava { width:28px;height:28px;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.12));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--muted);flex-shrink:0; font-size:12px }
-.lw-item .nick { font-weight:700; color:#fff; max-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px }
-.lw-item .amt { font-weight:900; color:var(--accent-green); min-width:70px; text-align:right; font-size:13px; }
-
-/* summary block below list */
-#liveWinsSummary {
-  margin-top:4px;
-  padding:8px;border-radius:8px;background:linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.12));
-  font-size:13px; color:var(--muted);
-}
-#liveWinsSummary .s-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
-#liveWinsSummary .s-name{font-weight:700;color:#fff}
-
-/* small footer controls */
-#liveWinsBox .lw-footer { display:flex;gap:8px;align-items:center;justify-content:space-between;padding-top:6px; color:var(--muted); font-size:12px; }
-
-/* responsive tweak to avoid overlapping on small screens */
-@media (max-width:900px){
-  #liveWinsBox { right: 8px; width: 270px; max-height: 44vh; }
-}
-
-/* end live wins */
-
-/* Toast for nickname/save messages */
-#kf-toast {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 20000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-  pointer-events: none;
-}
-.kf-toast-item {
-  pointer-events: auto;
-  background: rgba(10,10,10,0.95);
-  color: #eaffef;
-  border-radius: 8px;
-  padding: 10px 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
-  border: 1px solid rgba(12,240,74,0.08);
-  font-weight:700;
-  min-width: 160px;
-  text-align: right;
-  transition: transform .28s cubic-bezier(.2,.9,.2,1), opacity .28s;
-}
-.kf-toast-item.show { transform: translateY(0); opacity: 1; }
-.kf-toast-item.hide { transform: translateY(8px); opacity: 0; }
-
-/* ========================
- MOBILE SPECIFIC TWEAKS
- ======================== */
-
-/* Hide unnecessary elements and stack layout on small screens.
-   Crucially: allow scrolling and move the live wins to bottom
-   with an easy toggle so it does not block the main board.
-*/
-#liveWinsToggle {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 21000;
-  display: none;
-  background: linear-gradient(180deg,#0cf04a,#08a132);
-  color: #04220b;
-  border: none;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-weight: 900;
-  box-shadow: 0 10px 30px rgba(12,240,74,0.12);
-  cursor: pointer;
-  font-size: 14px;
-}
-
-@media (max-width:720px){
-  html,body{height:auto; overflow:auto}
-  .wrap{padding:12px}
-  .card{display:grid; grid-template-columns:1fr; width:calc(100% - 24px); padding:12px; gap:12px}
-  header{flex-direction:row;flex-wrap:wrap; gap:8px}
-  .header-left{width:100%; justify-content:space-between}
-  .board-area{order:1; width:100%;}
-  aside.info{order:3; width:100%;}
-  .board{min-height:240px; gap:8px; grid-template-columns: repeat(5, 1fr);}
-
-  /* Live wins becomes bottom centered and full-ish width on mobile */
-  #liveWinsBox {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 86px; /* keep above toggle and toast area */
-    transform: none;
-    width: calc(100% - 24px);
-    max-height: 38vh;
-    font-size: 13px;
-    padding: 10px;
-    border-radius: 10px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  /* Make the header compact */
-  #liveWinsBox .lw-title { font-size: 14px; }
-  #liveWinsBox .lw-sub { font-size: 12px; }
-
-  /* show toggle button */
-  #liveWinsToggle { display: block; }
-
-  /* allow board to be fully scrollable and not blocked */
-  .card, .wrap { overflow: visible; }
-
-  /* ensure toast still visible above live box */
-  #kf-toast { right: 14px; bottom: 82px; }
-
-  /* allow modal overlays to fit */
-  .modal { max-width: 96%; padding: 14px; }
-}
-
-/* hide live box when mobile-hidden class applied */
-#liveWinsBox.mobile-hidden { display: none !important; }
-
-/* ========================
-   END MOBILE
-   ======================== */
-
-</style>
-</head>
-<body>
-<div class="wrap" id="wrap">
-  <div class="card" role="application" id="card">
-    <header>
-      <div class="header-left" style="display:flex;align-items:center;gap:12px">
-        <div>
-          <h1 id="title">Kenzies Frigde <span style="font-size:12px;color:var(--muted);font-weight:600"></span></h1>
-          <div class="subtitle">Welcome to kenzies fridge.</div>
-        </div>
-
-        <!-- Social icons moved to the left so they aren't off the slot -->
-        <div class="socials" id="socialsBar" aria-label="Social links" style="margin-left:6px">
-          <a class="social-link neon" href="https://www.instagram.com/mackenzie._.fordd" target="_blank" rel="noopener noreferrer" title="Instagram">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/instagram.svg" alt="Instagram">
-          </a>
-          <a class="social-link neon" href="https://www.snapchat.com/add/mackenzief805" target="_blank" rel="noopener noreferrer" title="Snapchat">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/snapchat.svg" alt="Snapchat">
-          </a>
-
-          <!-- TikTok icons (3 links) -->
-          <a class="social-link neon" href="https://www.tiktok.com/@mackenzie._.fordd?_t=ZT-90tB6AaVQuE&_r=1" target="_blank" rel="noopener noreferrer" title="TikTok 1">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/tiktok.svg" alt="TikTok">
-          </a>
-          <a class="social-link neon" href="https://www.tiktok.com/@kenzibets?_t=ZT-90tB6vEiKp4&_r=1" target="_blank" rel="noopener noreferrer" title="TikTok 2">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/tiktok.svg" alt="TikTok">
-          </a>
-          <a class="social-link neon" href="https://www.tiktok.com/@kenzii.clips?_t=ZT-90tAxvfgWSF&_r=1" target="_blank" rel="noopener noreferrer" title="TikTok 3">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/tiktok.svg" alt="TikTok">
-          </a>
-
-          <a class="social-link neon" href="https://www.youtube.com/@kenzibettz" target="_blank" rel="noopener noreferrer" title="YouTube">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/youtube.svg" alt="YouTube">
-          </a>
-          <a class="social-link neon" href="https://kick.com/mackenzie-fordd" target="_blank" rel="noopener noreferrer" title="Kick">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@15.19.0/icons/kick.svg" alt="Kick">
-          </a>
-        </div>
-
-        <!-- Moved Leaderboard button here (left of slot area) -->
-        <button id="leaderboardBtn" class="small" type="button">LEADERBOARD</button>
-        <!-- Rainbet button requested (opens animated message) -->
-        <button id="rainbetBtn" title="Rainbet — use code shawty" type="button">
-          <img src="https://raw.githubusercontent.com/kenzibets/socials/main/rain.png" alt="rain logo" />
-          RAINBET
-        </button>
-      </div>
-
-      <!-- right side simplified -->
-      <div style="text-align:right">
-        <!-- kept empty to avoid overlap with slot -->
-      </div>
-    </header>
-
-    <!-- LEFT: slot board -->
-    <div class="board-area" id="boardArea">
-      <div class="controls">
-        <div class="left-controls">
-          <div>
-            <div class="muted">Balance</div>
-            <div id="balance" class="balance">5000.00</div>
-          </div>
-          <div>
-            <div class="muted">Bet</div>
-            <div id="betWrap"><input id="betInput" type="number" value="10" min="1" step="1" style="width:90px;"></div>
-          </div>
-          <button id="maxBtn" class="small" type="button">MAX</button>
-
-          <!-- CHANGED: "Reset" button replaced with Sell Feet Pics action -->
-          <button id="sellFeetBtn" class="small" title="Sell feet pics (3 uses per 24h)" type="button">SELL FEET PICS</button>
-
-          <!-- MEMES MODE BUTTON (does NOT change colors) -->
-          <button id="memesBtn" class="small" type="button">Activate Memes Mode</button>
-
-        </div>
-
-        <!-- Play area (SPIN + AUTO horizontally) -->
-        <div style="display:flex;gap:12px;align-items:center">
-          <div style="text-align:center">
-            <div class="muted">Play</div>
-            <div id="buttonArea" style="margin-top:6px">
-              <button id="spinBtn" class="btn" type="button">SPIN</button>
-              <!-- auto on the right of spin -->
-              <button id="autoBtn" class="small" style="margin-left:12px" type="button">AUTO 10</button>
-            </div>
-            <div id="lastWin" class="muted" style="margin-top:6px">—</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="board" id="board" aria-hidden="false"></div>
-
-      <div class="particles" id="particles"></div>
-
-      <!-- Minimal memesBox placeholder (kept hidden mostly) -->
-      <div id="memesBox" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><strong>Memes mode</strong></div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- RIGHT: info + player -->
-    <aside class="info" aria-label="Info & Player">
-      <div>
-        <div class="muted">Payout board</div>
-        <div style="font-weight:700">Center-row payouts</div>
-      </div>
-      <div class="payout-board" id="payoutBoard"></div>
-
-      <div>
-        <div class="muted">Spin history</div>
-        <div class="history" id="history"></div>
-      </div>
-
-      <div>
-        <div class="muted">Music Player (background)</div>
-        <div class="player">
-          <div style="display:flex;gap:8px;align-items:center">
-            <label class="small" style="padding:6px 8px;cursor:pointer">
-              Select folder
-              <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none">
-            </label>
-            <button id="shuffleBtn" class="small" type="button">Shuffle: OFF</button>
-            <button id="loopBtn" class="small" type="button">Loop: ON</button>
-          </div>
-
-          <div style="display:flex;gap:8px;align-items:center">
-            <button id="prevBtn" class="small" type="button">Prev</button>
-            <button id="playBtn" class="small" type="button">Play</button>
-            <button id="nextBtn" class="small" type="button">Next</button>
-            <input id="vol" type="range" min="0" max="1" step="0.01" value="0.7" style="flex:1">
-          </div>
-
-          <div style="display:flex;gap:8px;align-items:center">
-            <div style="flex:1">
-              <div class="progress" id="progress">
-                <div class="bar" id="progressBar"></div>
-              </div>
-            </div>
-            <div class="time" id="timeLabel">0:00 / 0:00</div>
-          </div>
-
-          <div class="playlist" id="playlist" aria-live="polite" style="min-height:40px"></div>
-        </div>
-      </div>
-    </aside>
-  </div>
-</div>
-
-<!-- Live Wins Box (fixed middle-right) -->
-<div id="liveWinsBox" aria-live="polite" aria-atomic="true" role="region" title="Live payouts">
-  <div class="lw-header">
-    <div class="lw-live-dot" aria-hidden="true"></div>
-    <div class="lw-title">LIVE PAYOUTS</div>
-    <div class="lw-sub" id="lw-sub">Recent spins & wins</div>
-  </div>
-
-  <div id="liveWinsList" aria-hidden="false">
-    <!-- items appended here -->
-    <div class="lw-item" style="opacity:.55">
-      <div class="left"><div class="ava">KF</div><div class="nick">Waiting for activity...</div></div>
-      <div class="amt" style="color:var(--muted)">—</div>
-    </div>
-  </div>
-
-  <div id="liveWinsSummary">
-    <div style="font-weight:900;color:var(--accent-green);margin-bottom:6px">Summary</div>
-    <div id="lw-summary-rows"><div style="color:var(--muted)">No recent activity</div></div>
-  </div>
-
-  <div class="lw-footer">
-    <div id="lw-last-refresh" style="font-size:12px;color:var(--muted)">—</div>
-    <div>
-      <button id="lw-refresh-btn" class="small" type="button">Refresh</button>
-    </div>
-  </div>
-</div>
-
-<!-- Mobile toggle button for live wins (shown only on small screens) -->
-<button id="liveWinsToggle" aria-controls="liveWinsBox" aria-expanded="true" title="Toggle Live Payouts">LIVE</button>
-
-<!-- Sell Feet Pics modal -->
-<div id="sellFeetModal" class="modal-overlay" aria-hidden="true" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sellFeetTitle">
-    <div class="title" id="sellFeetTitle">You sold feet pics...</div>
-    <div class="msg" id="sellFeetMsg">You lost your dignity and made $0.00 from selling feet pics... yikes man leave the feet pic business to rudy!</div>
-    <div class="small-muted" id="sellFeetInfo"></div>
-    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
-      <button id="sellFeetClose" class="continue-btn" type="button">OK</button>
-    </div>
-  </div>
-</div>
-
-<!-- Memetopia modal (explanatory text, doesn't show counts) -->
-<div id="memetopiaModal" class="modal-overlay" aria-hidden="true" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memetopiaTitle">
-    <h2 id="memetopiaTitle">Memetopia</h2>
-    <p id="memetopiaBody">Memetopia replaces standard slot symbols with images (including animated GIFs) and plays win/lose sounds from the repo. Use it to personalize the slot with memes and audio hosted in the repository folders. Press Continue to proceed.</p>
-    <button id="memetopiaContinue" class="continue-btn flash" type="button">CONTINUE</button>
-  </div>
-</div>
-
-<!-- Win overlay (count-up and per-win animation) -->
-<div id="winOverlay" class="win-overlay hidden" aria-hidden="true">
-  <div class="title" id="winTitle">YOU WIN</div>
-  <div class="amount" id="winAmount">$0.00</div>
-  <div class="subtitle muted" id="winSub" style="margin-top:6px;font-size:13px"></div>
-</div>
-
-<!-- Rainbet modal + confetti container -->
-<div id="rainbetModal" aria-hidden="true" style="display:none">
-  <div class="rain-modal" role="dialog" aria-modal="true" aria-labelledby="rainTitle">
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px">
-      <img class="rain-logo" src="https://raw.githubusercontent.com/kenzibets/socials/main/rain.png" alt="rain logo">
-      <div class="rain-title" id="rainTitle">Rainbet — 20% Rakeback Boost</div>
-    </div>
-    <div class="rain-body">Use code <strong>shawty</strong> for a <strong>20% rakeback boost</strong>. Limited time — enjoy the boost!</div>
-    <div style="margin-top:12px">
-      <div class="rain-code pulse">CODE: <span style="margin-left:8px">SHAWTY</span></div>
-    </div>
-    <div style="margin-top:14px">
-      <button class="rain-close" id="rainCloseBtn" type="button">Got it</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast container -->
-<div id="kf-toast" aria-hidden="true"></div>
-
-<!-- Memes & main script -->
-<script>
-/* Single-file client-side slot machine (static)
-   Edits applied:
-    - Socials moved to left (header-left).
-    - Rainbet modal now uses display:flex when shown so it centers correctly.
-    - All previous logic preserved.
-    - REMOVED blinking inner dot on LIVE PAYOUTS indicator.
-    - ALL visual numbers now use abbreviated letters (K, M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc, Ud, Vg) for thousand+.
-    - IMPORTANT: UI will NEVER fallback to user_id for display; uses 'Anon' instead.
-    - When saving a nickname, a toast message "Nickname set to {nick}" is shown.
-*/
-
-/* ---------------------------
-   USER ID helpers (canonicalization & validation)
-   --------------------------- */
-// place these helpers near the top so all scripts can use them
-function canonicalizeUserId(uid){
-  if(!uid) return '';
-  return String(uid).trim().toLowerCase();
-}
-const USERID_RE = /^[a-z0-9\-_]{3,64}$/;
-function isValidUserId(uid){
-  return USERID_RE.test(canonicalizeUserId(uid));
-}
-function ensureLocalUserId(){
-  try{
-    let uid = localStorage.getItem('kf_user_id') || '';
-    uid = canonicalizeUserId(uid);
-    if(!isValidUserId(uid)){
-      uid = 'u-' + Math.random().toString(36).slice(2,12);
-      uid = canonicalizeUserId(uid);
-    }
-    localStorage.setItem('kf_user_id', uid);
-    return uid;
-  }catch(e){
-    // fallback - generate but do not persist
-    return canonicalizeUserId('u-' + Math.random().toString(36).slice(2,12));
-  }
-}
-// ---------------------------
-
-/* ---------------------------
-   NEW: Number abbreviation helpers
-   --------------------------- */
-
-// abbreviateNumber: returns a compact string WITHOUT a currency symbol, e.g.:
-//   10000 -> "10K", 1500 -> "1.5K", 500 -> "500", 1234567 -> "1.2M"
-function abbreviateNumber(num){
-  if(!isFinite(num) || num === null) return '0';
-  const sign = num < 0 ? -1 : 1;
-  num = Math.abs(num);
-
-  // Extended suffixes up past sextillion (Sx/Sp)
-  const suffixes = ['', 'K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Vg','Tg'];
-  let idx = 0;
-  while(num >= 1000 && idx < suffixes.length - 1){
-    num = num / 1000;
-    idx++;
-  }
-  let str;
-  if(idx === 0){
-    if(Number.isInteger(num)) str = String(num);
-    else str = num.toFixed(2).replace(/\.?0+$/,'');
-  } else {
-    const roundedOne = Math.round(num * 10) / 10;
-    if(roundedOne >= 10 || Number.isInteger(roundedOne)) str = String(Math.round(roundedOne));
-    else str = String(roundedOne).replace(/\.?0+$/,'');
-  }
-  return (sign < 0 ? '-' : '') + str + suffixes[idx];
-}
-
-// formatCurrency: returns a string prefixed with $ (e.g., "$10K")
-function formatCurrency(v){
-  if(!isFinite(Number(v))) return '$0';
-  return '$' + abbreviateNumber(Number(v));
-}
-
-// formatSignedAbbrev: returns "+10K" or "-5.5K" (no $)
-function formatSignedAbbrev(v){
-  const sign = (v >= 0) ? '+' : '-';
-  return sign + abbreviateNumber(Math.abs(Number(v)));
-}
-
-// parse abbreviated string back to numeric (supports K,M,B,T, Qa, Qi, Sx, Sp and beyond)
-function parseAbbreviated(str){
-  if(!str && str !== 0) return 0;
-  try{
-    let s = String(str).trim();
-    s = s.replace(/\$/g,'').replace(/,/g,'').trim();
-    const m = s.match(/^([+-])?\s*([\d\.]+)\s*([a-zA-Z]{0,3})$/);
-    if(!m) {
-      const raw = parseFloat(s);
-      return isFinite(raw) ? raw : 0;
-    }
-    const sign = m[1] === '-' ? -1 : 1;
-    const num = parseFloat(m[2]) || 0;
-    const suffix = (m[3] || '').toLowerCase();
-
-    const map = {
-      '': 1,
-      'k': 1e3,
-      'm': 1e6,
-      'b': 1e9,
-      't': 1e12,
-      'qa': 1e15,
-      'q': 1e15,
-      'qi': 1e18,
-      'p': 1e18,
-      'sx': 1e21,
-      's': 1e21,
-      'sp': 1e24,
-      'oc': 1e27,
-      'no': 1e30,
-      'dc': 1e33,
-      'ud': 1e36,
-      'vg': 1e39,
-      'tg': 1e42
-    };
-    let mult = 1;
-    if(suffix){
-      if(map[suffix]) mult = map[suffix];
-      else {
-        const two = suffix.slice(0,2);
-        if(map[two]) mult = map[two];
-        else {
-          const one = suffix.slice(0,1);
-          if(map[one]) mult = map[one];
+# main.py
+"""
+FastAPI leaderboard backend for Kenzies Fridge.
+
+Usage:
+    pip install fastapi uvicorn
+    python -m uvicorn main:app --reload
+
+Serves:
+ - GET  /api/leaderboard?limit=100
+ - GET  /api/user/{user_id}
+ - POST /api/user/{user_id}        body: {"nickname": "...", "balance": 123.45, "trades":0, "wins":0, "period_start_balance":5000}
+ - POST /api/user/{user_id}/trade body: {"result":"win"|"lose", "amount": 12.34, "nickname":"..."}  (records a trade and optionally updates nickname)
+ - POST /api/close_month
+ - GET  /api/winners/{month}
+ - GET  /api/winners
+Additionally serves static files from ./static/
+Data stored in ./data/leaderboard.json
+"""
+import os
+import json
+import threading
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# default starting balance for new users
+START_BALANCE = 5000.0
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DB_PATH = os.path.join(DATA_DIR, "leaderboard.json")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
+
+_lock = threading.Lock()
+
+def _now_iso():
+    return datetime.utcnow().isoformat() + "Z"
+
+def _read_db() -> Dict[str, Any]:
+    if not os.path.exists(DB_PATH):
+        default = {
+            "users": {},  # userId -> { nickname, balance, last_update, trades, wins, period_start_balance }
+            "monthly_winners": {},  # "YYYY-MM" -> { "podium": [...], "closed_at": ISO }
+            "last_month_closed": None,
+            "recent_trades": []  # newest-first
         }
-      }
-    }
-    return sign * num * mult;
-  }catch(e){
-    return 0;
-  }
-}
-
-/* ---------------------------
-   NEW: Helper to set balance text (keeps underlying numeric balance variable untouched)
-   --------------------------- */
-function setBalanceTextDisplay(v){
-  try{
-    const el = document.getElementById('balance');
-    if(el) el.textContent = formatCurrency(Number(v));
-  }catch(e){}
-}
-
-/* ---------------------------
-   Toast helper (for nickname saved feedback)
-   --------------------------- */
-function showToast(message, timeout = 3000){
-  try{
-    const container = document.getElementById('kf-toast');
-    if(!container) return;
-    const item = document.createElement('div');
-    item.className = 'kf-toast-item hide';
-    item.textContent = message;
-    container.appendChild(item);
-    // force reflow to trigger animation
-    requestAnimationFrame(()=> {
-      item.classList.remove('hide'); item.classList.add('show');
-    });
-    setTimeout(()=> {
-      item.classList.remove('show'); item.classList.add('hide');
-      setTimeout(()=> { if(item && item.parentNode) item.parentNode.removeChild(item); }, 320);
-    }, timeout);
-  }catch(e){}
-}
-
-/* ---------------------------
-   Constants (symbols, weights) - tuned for more common small wins and rarer big wins
-   --------------------------- */
-const symbolImages = [
-    'https://github.com/kenzibets/socials/raw/main/green.png',
-    'https://github.com/kenzibets/socials/raw/main/red.png',
-    'https://github.com/kenzibets/socials/raw/main/white.png',
-    'https://pngfre.com/wp-content/uploads/monster-energy-drink-56.png',
-    'https://pngfre.com/wp-content/uploads/monster-energy-drink-51.png',
-    'https://pngfre.com/wp-content/uploads/monster-energy-drink-50.png',
-    'https://pngfre.com/wp-content/uploads/monster-energy-drink-71.png',
-    'https://pngfre.com/wp-content/uploads/Monster-8.png',
-    'https://pngfre.com/wp-content/uploads/Monster-24.png'
-];
-
-const SYMBOLS = [
-    {"id": 0, "name": "Green Slash", "img": symbolImages[0], "mult3": 8,  "mult2": 2.0},
-    {"id": 1, "name": "Red Slash",   "img": symbolImages[1], "mult3": 6,  "mult2": 1.8},
-    {"id": 2, "name": "White Slash", "img": symbolImages[2], "mult3": 5,  "mult2": 1.5},
-    {"id": 3, "name": "Monster A",   "img": symbolImages[3], "mult3": 12, "mult2": 2.2},
-    {"id": 4, "name": "Monster B",   "img": symbolImages[4], "mult3": 10, "mult2": 2.0},
-    {"id": 5, "name": "Monster C",   "img": symbolImages[5], "mult3": 7,  "mult2": 1.4},
-    {"id": 6, "name": "Monster D",   "img": symbolImages[6], "mult3": 40, "mult2": 6.0},
-    {"id": 7, "name": "Monster E",   "img": symbolImages[7], "mult3": 25, "mult2": 3.5},
-    {"id": 8, "name": "Monster F",   "img": symbolImages[8], "mult3": 15, "mult2": 2.5},
-];
-
-// Stronger bias toward common (0..2) symbols to make wins occur less frequently.
-// Keeping high-value symbols far rarer.
-const WEIGHTED_SYMBOL_IDS = (
-  Array(80).fill(0)
-  .concat(Array(50).fill(1))
-  .concat(Array(40).fill(2))
-  .concat(Array(18).fill(3))
-  .concat(Array(14).fill(4))
-  .concat(Array(8).fill(5))
-  .concat(Array(2).fill(6))
-  .concat(Array(3).fill(7))
-  .concat(Array(5).fill(8))
-);
-
-/* Board */
-const COLUMNS = 5;
-const ROWS = 3;
-
-/* GitHub API endpoints (your repo) */
-const GITHUB_API_BASE = 'https://api.github.com/repos/kenzibets/monsterslots/contents';
-const MEMES_DIR = 'static/memes';
-const AUDIO_WINS_DIR = 'static/audios/wins';
-const AUDIO_LOSE_DIR = 'static/audios/audios/lose';
-
-/* App state */
-const INITIAL_BALANCE = 5000.00;
-let balance = INITIAL_BALANCE;
-let autoRunning = false;
-let autoLeft = 0;
-let winShowing = false;
-
-const balanceEl = document.getElementById('balance');
-const betInput = document.getElementById('betInput');
-const betWrap = document.getElementById('betWrap');
-const spinBtn = document.getElementById('spinBtn');
-const autoBtn = document.getElementById('autoBtn');
-const lastWin = document.getElementById('lastWin');
-const boardEl = document.getElementById('board');
-const payoutBoardEl = document.getElementById('payoutBoard');
-const historyEl = document.getElementById('history');
-const maxBtn = document.getElementById('maxBtn');
-const sellFeetBtn = document.getElementById('sellFeetBtn');
-const particlesRoot = document.getElementById('particles');
-
-const memesBtn = document.getElementById('memesBtn');
-const memetopiaModal = document.getElementById('memetopiaModal');
-const memetopiaContinue = document.getElementById('memetopiaContinue');
-const memetopiaBody = document.getElementById('memetopiaBody');
-
-const folderInput = document.getElementById('folderInput'); // local music loader
-const playlistEl = document.getElementById('playlist');
-const playBtn = document.getElementById('playBtn');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const vol = document.getElementById('vol');
-const loopBtn = document.getElementById('loopBtn');
-const shuffleBtn = document.getElementById('shuffleBtn');
-const progress = document.getElementById('progress');
-const progressBar = document.getElementById('progressBar');
-const timeLabel = document.getElementById('timeLabel');
-
-const winOverlay = document.getElementById('winOverlay');
-const winTitle = document.getElementById('winTitle');
-const winAmountEl = document.getElementById('winAmount');
-const winSub = document.getElementById('winSub');
-
-const sellFeetModal = document.getElementById('sellFeetModal');
-const sellFeetMsg = document.getElementById('sellFeetMsg');
-const sellFeetInfo = document.getElementById('sellFeetInfo');
-const sellFeetClose = document.getElementById('sellFeetClose');
-
-let playlist = []; // background music playlist
-let audio = new Audio();
-audio.volume = Number(vol.value);
-let currentIndex = 0;
-let loopAudio = true;
-let shuffleAudio = false;
-loopBtn.textContent = 'Loop: ON';
-shuffleBtn.textContent = 'Shuffle: OFF';
-
-let memeImages = [];
-let memeSymbols = [];
-let sfxWins = [];
-let sfxLose = [];
-let memesMode = false;
-
-function setBalance(v){ balance = Math.max(0, Math.round(v*100)/100); setBalanceTextDisplay(balance); window.balance = balance; }
-setBalance(balance);
-
-function fmtTime(s){ if(!isFinite(s)) return '0:00'; s = Math.max(0, Math.floor(s)); return Math.floor(s/60) + ':' + (s%60<10 ? '0'+(s%60) : (s%60)); }
-
-function buildBoard(){
-  boardEl.innerHTML = '';
-  for(let c=0;c<COLUMNS;c++){
-    const col = document.createElement('div');
-    col.className = 'col';
-    col.id = `col-${c}`;
-    const mult = document.createElement('div');
-    mult.className = 'col-mult hidden';
-    mult.id = `col-mult-${c}`;
-    mult.textContent = 'X1';
-    col.appendChild(mult);
-    for(let r=0;r<ROWS;r++){
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      cell.innerHTML = `<img src="" alt=""><div class="name">---</div>`;
-      col.appendChild(cell);
-    }
-    boardEl.appendChild(col);
-  }
-}
-buildBoard();
-
-function populatePayoutBoard(){
-  payoutBoardEl.innerHTML = '';
-  if(memesMode && memeSymbols.length){
-    const sorted = memeSymbols.slice().sort((a,b)=>b.mult3 - a.mult3);
-    for(const s of sorted){
-      const row = document.createElement('div');
-      row.className = 'payout-row';
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.padding = '6px 0';
-      row.style.alignItems = 'center';
-      row.innerHTML = `
-        <div style="display:flex;gap:12px;align-items:center;min-width:0">
-          <img src="${s.img}" style="width:40px;height:40px;object-fit:contain">
-          <div style="line-height:1;min-width:0">
-            <div style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px">${s.winName}</div>
-            <div class="muted" style="font-size:12px">3+ center → ${s.mult3}x • pair → ${s.mult2}x</div>
-          </div>
-        </div>
-        <div style="text-align:right"><div class="muted" style="font-size:13px">meme ${s.id}</div></div>
-      `;
-      payoutBoardEl.appendChild(row);
-    }
-    const maxRow = document.createElement('div');
-    maxRow.style.padding = '8px 0';
-    maxRow.style.borderTop = '1px dashed rgba(255,255,255,0.04)';
-    maxRow.style.marginTop = '6px';
-    maxRow.innerHTML = `<div style="font-weight:900;color:var(--accent-green)">MAX WIN — All slots show distinct memes (bigger than JACKPOT)</div><div class="muted" style="font-size:12px">Triggers when center row contains distinct meme images across all columns.</div>`;
-    payoutBoardEl.prepend(maxRow);
-  } else {
-    const sorted = SYMBOLS.slice().sort((a,b)=>b.mult3 - a.mult3);
-    for(const s of sorted){
-      const row = document.createElement('div');
-      row.className = 'payout-row';
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.padding = '6px 0';
-      row.innerHTML = `
-        <div style="display:flex;gap:12px;align-items:center;min-width:0">
-          <img src="${s.img}" style="width:40px;height:40px;object-fit:contain">
-          <div style="line-height:1;min-width:0">
-            <div style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px">${s.name}</div>
-            <div class="muted" style="font-size:12px">3+ center → ${s.mult3}x • pair → ${s.mult2}x</div>
-          </div>
-        </div>
-        <div style="text-align:right"><div class="muted" style="font-size:13px">id ${s.id}</div></div>
-      `;
-      payoutBoardEl.appendChild(row);
-    }
-  }
-}
-populatePayoutBoard();
-
-function randInt(max){ return Math.floor(Math.random()*max); }
-
-function burstAt(x,y,color='rgba(12,240,74,0.95)'){
-  const count = 18;
-  for(let i=0;i<count;i++){
-    const p = document.createElement('div');
-    p.style.position='absolute';
-    p.style.left = `${x}px`; p.style.top = `${y}px`;
-    p.style.width='8px'; p.style.height='8px'; p.style.borderRadius='50%';
-    p.style.background = color; p.style.opacity = Math.random()*0.9 + 0.3;
-    p.style.pointerEvents = 'none'; p.style.mixBlendMode = 'screen';
-    particlesRoot.appendChild(p);
-    const angle = Math.random()*Math.PI*2;
-    const dist = 20 + Math.random()*80;
-    const dx = Math.cos(angle)*dist; const dy = Math.sin(angle)*dist;
-    p.animate([{ transform: `translate(0px,0px) scale(1)`, opacity: p.style.opacity },{ transform: `translate(${dx}px,${dy}px) scale(.6)`, opacity: 0 }], { duration: 700 + Math.random()*400, easing: 'cubic-bezier(.16,.85,.4,1)'});
-    setTimeout(()=> p.remove(), 1200);
-  }
-}
-function cameraShake(intensity = 6){
-  const card = document.getElementById('card');
-  const dist = intensity;
-  card.animate([{ transform: 'translateY(0)' },{ transform: `translateY(-${dist}px)` },{ transform: `translateY(${Math.round(dist/2)}px)` },{ transform: `translateY(-${Math.round(dist/3)}px)` },{ transform: 'translateY(0)' }], { duration: 700, iterations: 1, easing: 'cubic-bezier(.16,.85,.4,1)'});
-}
-
-function animateColumn(colIndex, finalColSymbols){
-  return new Promise(res=>{
-    const colEl = document.getElementById(`col-${colIndex}`);
-    const imgs = colEl.querySelectorAll('.cell img');
-    const names = colEl.querySelectorAll('.cell .name');
-    colEl.classList.add('spinning');
-    const ints = [];
-    for(let r=0;r<ROWS;r++){
-      ints[r] = setInterval(()=>{
-        if(memesMode && memeImages.length > 0){
-          const pick = memeImages[randInt(memeImages.length)];
-          imgs[r].src = pick.url;
-          names[r].textContent = pick.displayName;
-        } else {
-          const s = SYMBOLS[randInt(SYMBOLS.length)];
-          imgs[r].src = s.img;
-          names[r].textContent = s.name;
-        }
-      }, 50);
-    }
-    for(let r=0;r<ROWS;r++){
-      const stopAt = 360 + r*90 + Math.random()*120;
-      setTimeout(()=>{
-        clearInterval(ints[r]);
-        if(memesMode && memeImages.length > 0){
-          const serverId = finalColSymbols[r].id;
-          const memePick = memeSymbols[serverId % memeSymbols.length];
-          imgs[r].src = memePick.img;
-          names[r].textContent = memePick.winName;
-        } else {
-          imgs[r].src = finalColSymbols[r].img;
-          names[r].textContent = finalColSymbols[r].name;
-        }
-        imgs[r].animate([{ transform: 'translateY(-8px) scale(.96)' }, { transform: 'translateY(0) scale(1)' }], { duration: 300, easing: 'cubic-bezier(.2,.9,.2,1)' });
-      }, stopAt);
-    }
-    const finishAt = 360 + (ROWS-1)*90 + 220;
-    setTimeout(()=>{ colEl.classList.remove('spinning'); res(); }, finishAt+80);
-  });
-}
-
-function winningIndicesCenter(resp){
-  if(!resp || resp.win_type === 'none') return [];
-  const center = resp.center_row;
-  if(resp.win_type === 'maxwin'){
-    return [...Array(center.length).keys()];
-  }
-  if(resp.win_type === '3x'){
-    let winId = null;
-    for(let i=0;i<center.length;i++){
-      if(center.filter(x=>x===center[i]).length >= 3){ winId = center[i]; break; }
-    }
-    if(winId===null) return [];
-    const idxs = [];
-    for(let i=0;i<center.length;i++) if(center[i]===winId) idxs.push(i);
-    return idxs;
-  } else if(resp.win_type === '2x'){
-    let pairId = null;
-    const counts = {};
-    for(let i=0;i<center.length;i++) counts[center[i]] = (counts[center[i]]||0)+1;
-    for(const id in counts) if(counts[id]===2){ pairId = Number(id); break; }
-    const idxs = [];
-    for(let i=0;i<center.length;i++) if(center[i]===pairId) idxs.push(i);
-    return idxs;
-  }
-  return [];
-}
-
-function backgroundAudioAllowed(){
-  return true;
-}
-function sfxAllowed(){
-  return !!memesMode;
-}
-
-function playRandomWinSfx(){
-  if(!sfxAllowed()) return;
-  if(sfxWins.length === 0) return;
-  const pick = sfxWins[randInt(sfxWins.length)];
-  try { new Audio(pick.url).play().catch(()=>{}); } catch(e){}
-}
-function playRandomLoseSfx(){
-  if(!sfxAllowed()) return;
-  if(sfxLose.length === 0) return;
-  const pick = sfxLose[randInt(sfxLose.length)];
-  try { new Audio(pick.url).play().catch(()=>{}); } catch(e){}
-}
-
-let _winAnim = { raf: null, start: 0, end: 0, startTime: 0, duration: 0, onComplete: null };
-function showWinOverlay(amount, winType, message){
-  winShowing = true;
-  spinBtn.disabled = true;
-  autoBtn.disabled = true;
-
-  winOverlay.classList.remove('hidden','small','mid','jackpot','maxwin','pop','pulse','show');
-  void winOverlay.offsetWidth;
-
-  if(winType === 'maxwin'){
-    winOverlay.classList.add('maxwin','pop','show');
-    winTitle.textContent = message || 'MAX WIN!';
-    winSub.textContent = 'ALL DISTINCT MEMES — MEGA HIT';
-  } else if(winType === 'jackpot'){
-    winOverlay.classList.add('jackpot','pop','show');
-    winTitle.textContent = message || 'JACKPOT!';
-    winSub.textContent = 'MEGA WIN';
-  } else if(winType === 'mid'){
-    winOverlay.classList.add('mid','pop','show');
-    winTitle.textContent = message || 'BIG WIN';
-    winSub.textContent = 'Nice hit!';
-  } else {
-    winOverlay.classList.add('small','pulse','show');
-    winTitle.textContent = message || 'Win';
-    winSub.textContent = '';
-  }
-
-  _winAnim.start = 0;
-  _winAnim.end = Number(amount) || 0;
-  const absEnd = Math.abs(_winAnim.end);
-  _winAnim.duration = 800;
-  if(absEnd >= 200) _winAnim.duration = 1400;
-  if(absEnd >= 1000) _winAnim.duration = 2200;
-  if(winType === 'jackpot') _winAnim.duration = 3000;
-  if(winType === 'maxwin') _winAnim.duration = 3800;
-  _winAnim.startTime = null;
-  _winAnim.onComplete = () => {
-    setTimeout(()=> {
-      winOverlay.classList.remove('show');
-      setTimeout(()=> {
-        winOverlay.classList.add('hidden');
-        winShowing = false;
-        spinBtn.disabled = false;
-        autoBtn.disabled = false;
-      }, 500);
-    }, 900);
-  };
-
-  if(winType === 'maxwin'){
-    cameraShake(12);
-    const boardRect = boardEl.getBoundingClientRect();
-    burstAt(boardRect.width/2, boardRect.height/2, 'rgba(12,240,74,0.98)');
-    burstAt(boardRect.width/2, boardRect.height/2, 'rgba(255,215,0,0.95)');
-  } else if(winType === 'jackpot'){
-    cameraShake(9);
-  }
-
-  function step(ts){
-    if(!_winAnim.startTime) _winAnim.startTime = ts;
-    const elapsed = ts - _winAnim.startTime;
-    const t = Math.min(1, elapsed / _winAnim.duration);
-    const eased = 1 - Math.pow(1 - t, 3);
-    const current = _winAnim.start + (_winAnim.end - _winAnim.start) * eased;
-    winAmountEl.textContent = formatCurrency(current);
-    if(t < 1 && _winAnim.raf !== 'finished'){
-      _winAnim.raf = requestAnimationFrame(step);
-    } else {
-      _winAnim.raf = null;
-      winAmountEl.textContent = formatCurrency(_winAnim.end);
-      _winAnim.onComplete && _winAnim.onComplete();
-    }
-  }
-  _winAnim.raf = requestAnimationFrame(step);
-
-  const finishNow = (ev) => {
-    if(!_winAnim) return;
-    if(_winAnim.raf && _winAnim.raf !== 'finished'){
-      if(_winAnim.raf) cancelAnimationFrame(_winAnim.raf);
-      _winAnim.raf = 'finished';
-      winAmountEl.textContent = formatCurrency(_winAnim.end);
-      _winAnim.onComplete && _winAnim.onComplete();
-    }
-    document.removeEventListener('pointerdown', finishNow, true);
-  };
-  document.addEventListener('pointerdown', finishNow, true);
-}
-
-/* -------------- Spin logic (client-side) -------------- */
-function serverlessSpin(bet){
-  const grid_ids = [];
-  if(memesMode && memeSymbols.length){
-    for(let c=0;c<COLUMNS;c++){
-      const col = [];
-      for(let r=0;r<ROWS;r++){
-        col.push( Math.floor(Math.random()*memeSymbols.length) );
-      }
-      grid_ids.push(col);
-    }
-  } else {
-    for(let c=0;c<COLUMNS;c++){
-      const col = [];
-      for(let r=0;r<ROWS;r++){
-        col.push( WEIGHTED_SYMBOL_IDS[randInt(WEIGHTED_SYMBOL_IDS.length)] );
-      }
-      grid_ids.push(col);
-    }
-  }
-
-  const grid_symbols = [];
-  for(const col of grid_ids){
-    for(const rid of col){
-      if(memesMode && memeSymbols.length){
-        grid_symbols.push(memeSymbols.find(s => s.id === rid) || memeSymbols[0]);
-      } else {
-        grid_symbols.push(SYMBOLS.find(s => s.id === rid));
-      }
-    }
-  }
-
-  const center_row_index = Math.floor(ROWS/2);
-  const center_ids = [];
-  for(let c=0;c<COLUMNS;c++) center_ids.push(grid_ids[c][center_row_index]);
-
-  const counts = {};
-  for(const id of center_ids) counts[id] = (counts[id]||0) + 1;
-
-  let payout_multiplier = 0;
-  let win_type = "none";
-  let winning_symbol = null;
-
-  // Detect potential max-win (distinct center across all columns) for both modes
-  const uniqueCenterCount = (new Set(center_ids)).size;
-  const potentialMaxWin = uniqueCenterCount === COLUMNS;
-
-  if(potentialMaxWin){
-    // compute an initial large multiplier (base) from symbol mult3 values (or meme equivalent)
-    if(memesMode && memeSymbols.length){
-      const involvedMults = center_ids.map(id => (memeSymbols.find(s=>s.id===id) || {mult3:5}).mult3 );
-      const avg = involvedMults.reduce((a,b)=>a+b,0)/involvedMults.length;
-      // base for maxwin is much larger now (super huge payouts)
-      payout_multiplier = Math.max( avg * 12, avg + 2000 );
-    } else {
-      const involvedMults = center_ids.map(id => {
-        const s = SYMBOLS.find(x=>x.id===id);
-        return s ? s.mult3 : 6;
-      });
-      const avg = involvedMults.reduce((a,b)=>a+b,0)/involvedMults.length;
-      payout_multiplier = Math.max( avg * 10, avg + 1500 );
-    }
-    win_type = 'maxwin';
-    winning_symbol = 'ALL DISTINCT';
-    // Enforce strict 5% keep chance for maxwin (user requested)
-    if(Math.random() > 0.05){
-      win_type = 'none';
-      payout_multiplier = 0;
-      winning_symbol = null;
-    } else {
-      // If it passes the 5% roll, amplify the multiplier heavily to create a super-huge payout
-      const bonusFactor = 20 + Math.random()*60; // 20x to 80x (very big)
-      payout_multiplier = Math.round(payout_multiplier * bonusFactor * 100) / 100;
-    }
-  } else {
-    // Normal check for 3x / 2x (but made much rarer and larger when they pass)
-    if(memesMode && memeSymbols.length){
-      for(const [ridStr, cnt] of Object.entries(counts)){
-        const rid = Number(ridStr);
-        if(cnt >= 3){
-          const sym = memeSymbols.find(s => s.id === rid);
-          // very low chance to actually award (makes wins rarer)
-          const passProb = 0.06; // 6% chance to actually let it be counted
-          if(Math.random() <= passProb){
-            payout_multiplier = sym.mult3 * (6 + Math.random()*22); // big boost on pass
-            payout_multiplier = Math.round(payout_multiplier*100)/100;
-            win_type = "3x";
-            winning_symbol = sym.winName;
-          } else {
-            payout_multiplier = 0; win_type = 'none'; winning_symbol = null;
-          }
-          break;
-        }
-      }
-      if(payout_multiplier === 0){
-        for(const [ridStr, cnt] of Object.entries(counts)){
-          const rid = Number(ridStr);
-          if(cnt === 2){
-            const sym = memeSymbols.find(s => s.id === rid);
-            const passProb = 0.28; // less rare than 3x but still less frequent
-            if(Math.random() <= passProb){
-              payout_multiplier = sym.mult2 * (2 + Math.random()*6); // mid boost
-              payout_multiplier = Math.round(payout_multiplier*100)/100;
-              win_type = "2x";
-              winning_symbol = sym.winName;
-            } else {
-              payout_multiplier = 0; win_type = 'none'; winning_symbol = null;
+        with open(DB_PATH, "w", encoding="utf-8") as f:
+            json.dump(default, f, indent=2)
+        return default
+    with open(DB_PATH, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            # Corrupt file fallback
+            return {
+                "users": {},
+                "monthly_winners": {},
+                "last_month_closed": None,
+                "recent_trades": []
             }
-            break;
-          }
-        }
-      }
-    } else {
-      // Standard symbols path: check 3-of-a-kind then pair; but apply strict pass probabilities
-      for(const [ridStr, cnt] of Object.entries(counts)){
-        const rid = Number(ridStr);
-        if(cnt >= 3){
-          const sym = SYMBOLS.find(s => s.id === rid);
-          const passProb = 0.08; // ~8% chance to actually award 3x (much rarer)
-          if(Math.random() <= passProb){
-            // super-scale the payout for the rare occasion it happens
-            const base = (sym && sym.mult3) ? sym.mult3 : 8;
-            const scale = 8 + Math.random()*28; // big multiplier
-            payout_multiplier = Math.round(base * scale * 100)/100;
-            win_type = "3x";
-            winning_symbol = sym.name;
-          } else {
-            payout_multiplier = 0; win_type = 'none'; winning_symbol = null;
-          }
-          break;
-        }
-      }
-      if(payout_multiplier === 0){
-        for(const [ridStr, cnt] of Object.entries(counts)){
-          const rid = Number(ridStr);
-          if(cnt === 2){
-            const sym = SYMBOLS.find(s => s.id === rid);
-            const passProb = 0.28; // ~28% chance to award pair
-            if(Math.random() <= passProb){
-              const base = (sym && sym.mult2) ? sym.mult2 : 1.5;
-              const scale = 1.8 + Math.random()*4.5; // smaller scale than 3x, but still boosted
-              payout_multiplier = Math.round(base * scale * 100)/100;
-              win_type = "2x";
-              winning_symbol = sym.name;
-            } else {
-              payout_multiplier = 0; win_type = 'none'; winning_symbol = null;
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
 
-  // Extra safety: if we randomly decide no win after the above, ensure payout_multiplier is 0
-  if(win_type === 'none') payout_multiplier = 0;
+def _write_db(data: Dict[str, Any]):
+    # write atomically
+    tmp = DB_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    try:
+        os.replace(tmp, DB_PATH)
+    except Exception:
+        # fallback
+        with open(DB_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
-  // Final small adjust to avoid runaway unrealistic multipliers for certain branches
-  if(payout_multiplier >= 25 && payout_multiplier < 1000){
-    // small dampening for mid-high multipliers
-    payout_multiplier = Math.round(payout_multiplier * (0.9 + Math.random()*0.16) * 100) / 100;
-  }
+def _get_month_key(dt: Optional[datetime]=None) -> str:
+    dt = dt or datetime.utcnow()
+    return dt.strftime("%Y-%m")
 
-  const win_amount = Math.round(bet * payout_multiplier * 100) / 100;
+def _prev_month_key(dt: Optional[datetime]=None) -> str:
+    dt = dt or datetime.utcnow()
+    first = dt.replace(day=1)
+    prev_last = first - timedelta(days=1)
+    return prev_last.strftime("%Y-%m")
 
-  let message = (win_type === "3x" ? "JACKPOT!" : (win_type === '2x' ? "Nice pair!" : "No win — try again."));
-  if(win_type === 'maxwin') message = 'MAX WIN — ALL DISTINCT!';
-  if(memesMode && winning_symbol) message = (win_type === '3x' ? `JACKPOT — ${winning_symbol}` : (win_type === '2x' ? `Nice Pair — ${winning_symbol}` : message));
+def compute_podium_snapshot(users: Dict[str, Any], top_n=3):
+    arr = []
+    for uid, u in users.items():
+        try:
+            bal = float(u.get("balance", START_BALANCE))
+        except Exception:
+            bal = START_BALANCE
+        arr.append((uid, u.get("nickname", ""), bal))
+    arr.sort(key=lambda x: x[2], reverse=True)
+    podium = []
+    for i in range(min(top_n, len(arr))):
+        uid, nick, bal = arr[i]
+        podium.append({
+            "position": i+1,
+            "user_id": uid,
+            "nickname": nick,
+            "balance": round(bal, 2)
+        })
+    return podium
 
-  return {
-    grid: grid_ids,
-    symbols: grid_symbols,
-    center_row: center_ids,
-    bet: bet,
-    payout_multiplier: Math.round(payout_multiplier*100)/100,
-    win_amount: win_amount,
-    win_type: win_type,
-    winning_symbol: winning_symbol,
-    message: message
-  };
-}
+def compute_user_metrics(user_record: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        balance = float(user_record.get("balance", START_BALANCE))
+    except Exception:
+        balance = START_BALANCE
+    try:
+        start = float(user_record.get("period_start_balance", START_BALANCE))
+    except Exception:
+        start = START_BALANCE
 
-/* Main spin flow */
-async function doSpin(){
-  if(winShowing) return;
-  spinBtn.disabled = true;
-  autoBtn.disabled = true;
-  const bet = Math.max(1, Number(betInput.value) || 1);
-  if(bet > balance){ spinBtn.disabled = false; autoBtn.disabled = false; return; }
-  setBalance(balance - bet);
-  lastWin.textContent = '—';
+    if start == 0:
+        performance = 0.0
+    else:
+        performance = ((balance - start) / start) * 100.0
 
-  const resp = serverlessSpin(bet);
+    trades = int(user_record.get("trades", 0) or 0)
+    wins = int(user_record.get("wins", 0) or 0)
+    if trades <= 0:
+        win_rate = 0.0
+    else:
+        win_rate = (wins / trades) * 100.0
 
-  const colPromises = [];
-  for(let c=0;c<COLUMNS;c++){
-    const finalSymbols = resp.grid[c].map(id => {
-      if(memesMode && memeSymbols.length) return memeSymbols.find(s => s.id === id);
-      return SYMBOLS.find(s => s.id === id);
-    });
-    colPromises.push( animateColumn(c, finalSymbols) );
-  }
-
-  await Promise.all(colPromises);
-
-  const winIdxs = winningIndicesCenter(resp);
-  if(winIdxs.length > 0){
-    for(let c=0;c<COLUMNS;c++){
-      const multEl = document.getElementById(`col-mult-${c}`);
-      if(winIdxs.includes(c)){
-        multEl.textContent = resp.win_type === '3x' ? 'X3' : (resp.win_type === 'maxwin' ? 'MAX' : 'X2');
-        multEl.classList.remove('hidden'); multEl.classList.remove('small');
-        const colEl = document.getElementById(`col-${c}`);
-        colEl.classList.add('win');
-        if(resp.win_type === '3x' || resp.win_type === 'maxwin'){ colEl.classList.add('bigwin'); setTimeout(()=>colEl.classList.remove('bigwin'),1200); }
-        const centerCell = document.querySelector(`#col-${c} .cell:nth-child(${Math.floor(ROWS/2)+1})`);
-        const rect = centerCell.getBoundingClientRect();
-        const boardRect = boardEl.getBoundingClientRect();
-        const x = rect.left + rect.width/2 - boardRect.left;
-        const y = rect.top + rect.height/2 - boardRect.top;
-        burstAt(x,y, resp.win_type === 'maxwin' ? 'rgba(255,215,0,0.98)' : undefined);
-      } else {
-        const multEl = document.getElementById(`col-mult-${c}`);
-        multEl.textContent = 'X1';
-        multEl.classList.remove('hidden'); multEl.classList.add('small');
-        setTimeout(()=>multEl.classList.add('hidden'),700);
-      }
-    }
-    if(resp.win_type === '3x'){ cameraShake(9); }
-    if(resp.win_type === 'maxwin'){ cameraShake(12); }
-    playRandomWinSfx();
-  } else {
-    for(let c=0;c<COLUMNS;c++){
-      const multEl = document.getElementById(`col-mult-${c}`);
-      multEl.textContent = 'X1';
-      multEl.classList.remove('hidden'); multEl.classList.add('small');
-      setTimeout(()=>multEl.classList.add('hidden'),700);
-    }
-    playRandomLoseSfx();
-  }
-
-  if(resp.win_amount > 0){
-    setBalance(balance + resp.win_amount);
-    lastWin.textContent = `Center multiplier: ${resp.payout_multiplier}x (${resp.win_type})`;
-
-    let winTypeVisual = 'small';
-    if(resp.win_type === 'maxwin') winTypeVisual = 'maxwin';
-    else if(resp.win_type === '3x') winTypeVisual = 'jackpot';
-    else if(resp.win_type === '2x') winTypeVisual = 'mid';
-    let msg = resp.message;
-    showWinOverlay(resp.win_amount, winTypeVisual, msg);
-  } else {
-    lastWin.textContent = 'No win';
-  }
-
-  const historyRow = document.createElement('div');
-  historyRow.className = 'history-item';
-  const centerThumbs = resp.center_row.map(id => {
-    if(memesMode && memeImages.length>0){
-      const m = memeImages[id % memeImages.length];
-      return `<img src="${m.url}" style="width:24px;height:24px;object-fit:contain">`;
-    } else {
-      const s = SYMBOLS.find(x=>x.id===id);
-      return `<img src="${s.img}" style="width:24px;height:24px;object-fit:contain">`;
-    }
-  }).join('');
-  historyRow.innerHTML = `<div style="display:flex;gap:6px;align-items:center">${centerThumbs}</div><div style="font-weight:700">${resp.win_amount>0 ? `+${abbreviateNumber(resp.win_amount)}` : `-${abbreviateNumber(bet)}`}</div>`;
-  historyEl.prepend(historyRow);
-  while(historyEl.childElementCount > 40) historyEl.lastChild.remove();
-
-  setTimeout(()=>{ for(let c=0;c<COLUMNS;c++){ document.getElementById(`col-${c}`).classList.remove('win'); } }, 1800);
-
-  // update live-wins UI and post to server (non-blocking)
-  try {
-    const localUid = ensureLocalUserId();
-    const localNick = (localStorage.getItem('kf_nickname') || '').slice(0,40);
-    const result = resp.win_amount > 0 ? 'win' : 'lose';
-    const amtForServer = resp.win_amount > 0 ? resp.win_amount : bet;
-    const tradeEntry = {
-      ts: (new Date()).toISOString(),
-      user_id: localUid,
-      nickname: localNick,
-      result: result,
-      amount: Math.round(Number(amtForServer || 0) * 100) / 100
-    };
-    addLiveWinLocal(tradeEntry);
-    (async function(){
-      try{
-        await fetch(`/api/user/${encodeURIComponent(localUid)}/trade`, {
-          method: 'POST',
-          headers: {'content-type': 'application/json'},
-          body: JSON.stringify({ result: result, amount: amtForServer, nickname: (localNick || undefined) })
-        });
-      }catch(e){}
-    })();
-  } catch(e){
-    console.warn('live-wins update failed', e);
-  }
-
-  if(!winShowing){
-    spinBtn.disabled = false;
-    autoBtn.disabled = false;
-  }
-}
-
-/* ---------- controls ---------- */
-spinBtn.addEventListener('click', ()=> doSpin());
-
-autoBtn.addEventListener('click', async ()=>{
-  if(autoRunning){ autoRunning=false; autoBtn.textContent='AUTO 10'; return; }
-  autoRunning = true; autoLeft = 10; autoBtn.textContent = 'STOP AUTO';
-  while(autoRunning && autoLeft>0){
-    const bet = Math.max(1, Number(betInput.value) || 1);
-    if(balance < bet){ autoRunning=false; break; }
-    await doSpin();
-    autoLeft--;
-    await new Promise(r=>setTimeout(r, 520));
-  }
-  autoRunning = false; autoBtn.textContent='AUTO 10';
-});
-
-maxBtn.addEventListener('click', ()=> {
-  // Now set MAX to the *full* available balance (supports cents)
-  try{
-    const full = Math.floor((window.balance || 0) * 100) / 100;
-    betInput.value = Math.max(1, full);
-  }catch(e){
-    betInput.value = Math.max(1, Math.floor((window.balance || 0)));
-  }
-});
-
-/* ---------- SELL FEET PICS feature ---------- */
-function _getUserIdForSell(){
-  // unified: always use canonical local id
-  return ensureLocalUserId();
-}
-function _getSellKey(uid){ return `sellFeet_timestamps_${uid}`; }
-function _readSellTimestamps(uid){
-  try{
-    const raw = localStorage.getItem(_getSellKey(uid));
-    if(!raw) return [];
-    const arr = JSON.parse(raw);
-    if(!Array.isArray(arr)) return [];
-    return arr.map(n => Number(n)).filter(n => isFinite(n) && n>0).sort((a,b)=>a-b);
-  }catch(e){ return []; }
-}
-function _writeSellTimestamps(uid, arr){
-  try{
-    localStorage.setItem(_getSellKey(uid), JSON.stringify(arr.slice().sort((a,b)=>a-b)));
-  }catch(e){}
-}
-function _cleanOldTimestamps(arr){
-  const cutoff = Date.now() - 24*60*60*1000;
-  return arr.filter(ts => ts >= cutoff);
-}
-function _hoursMinutesFromMs(ms){
-  const s = Math.max(0, Math.floor(ms/1000));
-  const h = Math.floor(s/3600);
-  const m = Math.floor((s%3600)/60);
-  return { hours: h, minutes: m };
-}
-
-async function sellFeetPicsHandler(){
-  const uid = _getUserIdForSell();
-  let stamps = _readSellTimestamps(uid);
-  stamps = _cleanOldTimestamps(stamps);
-
-  if(stamps.length >= 3){
-    const oldest = stamps[0];
-    const nextAllowed = oldest + 24*60*60*1000;
-    const msLeft = nextAllowed - Date.now();
-    const pretty = _hoursMinutesFromMs(msLeft);
-    const h = pretty.hours, m = pretty.minutes;
-    alert(`You've already sold feet pics 3 times in the last 24 hours. Wait ${h}h ${m}m before trying again.`);
-    return;
-  }
-
-  const randomAmount = Math.round((Math.random() * 5000 + 0.01) * 100) / 100;
-  stamps.push(Date.now());
-  _writeSellTimestamps(uid, stamps);
-
-  const msg = `You lost your dignity and made ${formatCurrency(randomAmount)} from selling feet pics... yikes man leave the feet pic business to rudy!`;
-  sellFeetMsg.textContent = msg;
-
-  const usableLeft = Math.max(0, 3 - stamps.length);
-  const nextInfo = (usableLeft > 0) ? `You can do this ${usableLeft} more time(s) in the next 24 hours.` :
-    'You have reached the 3 uses limit — wait 24 hours.';
-  sellFeetInfo.textContent = nextInfo;
-
-  setBalance(randomAmount);
-  try{ localStorage.setItem('kf_balance', String(randomAmount)); }catch(e){}
-  sellFeetModal.style.display = 'flex';
-  sellFeetModal.classList.add('active');
-  sellFeetModal.setAttribute('aria-hidden','false');
-  _updateSellFeetButtonState();
-}
-
-sellFeetClose.addEventListener('click', ()=>{
-  sellFeetModal.classList.remove('active');
-  sellFeetModal.style.display = 'none';
-  sellFeetModal.setAttribute('aria-hidden','true');
-});
-
-function _updateSellFeetButtonState(){
-  const uid = _getUserIdForSell();
-  let stamps = _readSellTimestamps(uid);
-  stamps = _cleanOldTimestamps(stamps);
-  const used = stamps.length;
-  if(used >= 3){
-    sellFeetBtn.disabled = true;
-    const oldest = stamps[0];
-    const nextAllowed = oldest + 24*60*60*1000;
-    const msLeft = nextAllowed - Date.now();
-    const pretty = _hoursMinutesFromMs(msLeft);
-    sellFeetBtn.title = `Limit reached — try again in ${pretty.hours}h ${pretty.minutes}m`;
-  } else {
-    sellFeetBtn.disabled = false;
-    sellFeetBtn.title = `Sell feet pics (${3-used} uses left in rolling 24h)`;
-  }
-}
-
-sellFeetBtn.addEventListener('click', async ()=>{
-  const ok = confirm('Are you sure? Selling feet pics is for when your broke for a random payout (3 uses per 24h).');
-  if(!ok) return;
-  await sellFeetPicsHandler();
-});
-
-(function initSellFeetState(){
-  try{
-    _updateSellFeetButtonState();
-    setInterval(()=> _updateSellFeetButtonState(), 60*1000);
-  }catch(e){ console.warn('sellFeet init failed', e); }
-})();
-
-/* ---------- Memes & SFX autoload from GitHub ---------- */
-async function fetchGitHubDir(dir){
-  const url = `${GITHUB_API_BASE}/${dir}`;
-  try {
-    const r = await fetch(url);
-    if(!r.ok) return [];
-    const json = await r.json();
-    return json.filter(x=>x && x.type === 'file').map(f=>({ name: f.name, url: f.download_url }));
-  } catch(e){
-    return [];
-  }
-}
-
-function buildMemeSymbols(){
-  memeSymbols = memeImages.map((m, idx) => {
-    const n = Math.max(1, memeImages.length);
-    const base = Math.round(Math.max(6, 60 - idx * (50 / n)));
-    const mult3 = base;
-    const mult2 = Math.max(1.1, Math.round((mult3 / 10) * 10) / 10);
     return {
-      id: idx,
-      name: m.displayName,
-      winName: m.displayName,
-      img: m.url,
-      mult3: mult3,
-      mult2: mult2
-    };
-  });
-}
-
-async function autoloadFromGitHub(){
-  const memes = await fetchGitHubDir(MEMES_DIR);
-  memeImages = memes.filter(f=>/\.(png|jpe?g|gif|webp)$/i.test(f.name)).map(f=>{
-    const displayName = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g,' ').trim();
-    return { name: f.name, displayName, url: f.url };
-  });
-
-  const wins = await fetchGitHubDir(AUDIO_WINS_DIR);
-  const lose = await fetchGitHubDir(AUDIO_LOSE_DIR);
-  const audioFilter = (f) => /\.(mp3|m4a|mp4|wav|ogg|webm)$/i.test(f.name);
-  sfxWins = wins.filter(audioFilter).map(f=>({ name: f.name, url: f.url }));
-  sfxLose = lose.filter(audioFilter).map(f=>({ name: f.name, url: f.url }));
-
-  buildMemeSymbols();
-
-  if(memesMode && memeImages.length){
-    for(let c=0;c<COLUMNS;c++){
-      const colEl = document.getElementById(`col-${c}`);
-      const imgs = colEl.querySelectorAll('.cell img');
-      const names = colEl.querySelectorAll('.cell .name');
-      for(let r=0;r<ROWS;r++){
-        const pick = memeImages[(c + r) % memeImages.length];
-        imgs[r].src = pick.url;
-        names[r].textContent = pick.displayName;
-      }
-    }
-  }
-
-  populatePayoutBoard();
-}
-
-/* ---------- Memes Mode toggle (no color changes) ---------- */
-memesBtn.addEventListener('click', async ()=>{
-  memesMode = !memesMode;
-  const title = document.getElementById('title');
-  if(memesMode){
-    title.textContent = 'Kenztopia';
-    memesBtn.textContent = 'Deactivate Memes Mode';
-    await autoloadFromGitHub();
-    memetopiaBody.textContent = 'Kenztopia! Welcome to the kenzie vault of memes! Press Continue to close this message.';
-    memetopiaModal.style.display = 'flex';
-    memetopiaModal.classList.add('active');
-    memetopiaModal.setAttribute('aria-hidden', 'false');
-  } else {
-    title.textContent = 'The Fridge';
-    memesBtn.textContent = 'Activate Memes Mode';
-    memetopiaModal.style.display = 'none';
-    memetopiaModal.classList.remove('active');
-    memetopiaModal.setAttribute('aria-hidden', 'true');
-    for(let c=0;c<COLUMNS;c++){
-      const colEl = document.getElementById(`col-${c}`);
-      const imgs = colEl.querySelectorAll('.cell img');
-      const names = colEl.querySelectorAll('.cell .name');
-      for(let r=0;r<ROWS;r++){
-        const s = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
-        imgs[r].src = s.img;
-        names[r].textContent = s.name;
-      }
-    }
-    populatePayoutBoard();
-  }
-});
-
-memetopiaContinue.addEventListener('click', ()=>{
-  memetopiaModal.style.display = 'none';
-  memetopiaModal.classList.remove('active');
-  memetopiaModal.setAttribute('aria-hidden','true');
-});
-
-/* ---------- Background music player (local-folder loader) ---------- */
-folderInput.addEventListener('change', (ev)=>{
-  const files = Array.from(ev.target.files || []);
-  const audioFiles = files.filter(f=>/\.(mp3|m4a|mp4|wav|ogg|webm)$/i.test(f.name));
-  audioFiles.sort((a,b)=>a.name.localeCompare(b.name,'en',{numeric:true}));
-  playlist.forEach(p=>{ if(p.file && p.url) URL.revokeObjectURL(p.url); });
-  playlist = audioFiles.map(f => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
-  renderPlaylist();
-  if(playlist.length>0){ currentIndex = 0; loadIndex(0); audio.play().catch(()=>{}); playBtn.textContent='Pause'; }
-});
-
-function renderPlaylist(){
-  playlistEl.innerHTML = '';
-  playlist.forEach((p,i)=>{
-    const el = document.createElement('div');
-    el.style.display='flex'; el.style.justifyContent='space-between'; el.style.alignItems='center'; el.style.padding='6px';
-    el.style.gap = '8px';
-    el.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><div style="width:28px;height:28px;background:rgba(255,255,255,0.02);border-radius:4px;display:flex;align-items:center;justify-content:center">${i+1}</div><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${p.name}</div></div><div style="font-size:12px;color:var(--muted)">${i===currentIndex? 'Now' : ''}</div>`;
-    el.addEventListener('click', ()=>{ loadIndex(i); audio.play(); playBtn.textContent='Pause'; });
-    playlistEl.appendChild(el);
-  });
-}
-
-function loadIndex(i){
-  if(!playlist[i]) return;
-  currentIndex = i;
-  audio.src = playlist[i].url;
-  renderPlaylist();
-  updateTimeDisplay();
-}
-
-playBtn.addEventListener('click', ()=>{
-  if(!audio.src){ if(playlist.length>0) loadIndex(0); else return; }
-  if(audio.paused){ audio.play().catch(()=>{}); playBtn.textContent='Pause'; } else { audio.pause(); playBtn.textContent='Play'; }
-});
-
-prevBtn.addEventListener('click', ()=>{
-  if(playlist.length===0) return;
-  if(shuffleAudio){ currentIndex = Math.floor(Math.random()*playlist.length); }
-  else currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-  loadIndex(currentIndex); audio.play(); playBtn.textContent='Pause';
-});
-nextBtn.addEventListener('click', ()=>{
-  if(playlist.length===0) return;
-  if(shuffleAudio){ currentIndex = Math.floor(Math.random()*playlist.length); }
-  else currentIndex = (currentIndex + 1) % playlist.length;
-  loadIndex(currentIndex); audio.play(); playBtn.textContent='Pause';
-});
-
-vol.addEventListener('input', ()=> { 
-  audio.volume = Number(vol.value); 
-});
-
-loopBtn.addEventListener('click', ()=>{
-  loopAudio = !loopAudio; loopBtn.textContent = loopAudio ? 'Loop: ON' : 'Loop: OFF'; audio.loop = loopAudio;
-});
-shuffleBtn.addEventListener('click', ()=>{
-  shuffleAudio = !shuffleAudio; shuffleBtn.textContent = shuffleAudio ? 'Shuffle: ON' : 'Shuffle: OFF';
-});
-
-function updateTimeDisplay(){
-  const cur = audio.currentTime || 0;
-  const dur = audio.duration || 0;
-  progressBar.style.width = dur ? ((cur/dur)*100)+'%' : '0%';
-  timeLabel.textContent = `${fmtTime(cur)} / ${isFinite(dur) ? fmtTime(dur) : '0:00'}`;
-}
-audio.addEventListener('timeupdate', updateTimeDisplay);
-audio.addEventListener('loadedmetadata', updateTimeDisplay);
-audio.addEventListener('ended', ()=>{
-  if(loopAudio){ audio.currentTime = 0; audio.play(); return; }
-  if(playlist.length>0){
-    if(shuffleAudio) currentIndex = Math.floor(Math.random()*playlist.length);
-    else currentIndex = (currentIndex + 1) % playlist.length;
-    loadIndex(currentIndex); audio.play();
-  } else { playBtn.textContent = 'Play'; }
-});
-progress.addEventListener('click', (e)=>{
-  const rect = progress.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const pct = Math.max(0, Math.min(1, x/rect.width));
-  if(audio.duration) audio.currentTime = pct * audio.duration;
-});
-
-/* ---------------------------
-   Initial visuals & float
-   --------------------------- */
-function initBoardVisuals(){
-  for(let c=0;c<COLUMNS;c++){
-    const colEl = document.getElementById(`col-${c}`);
-    const imgs = colEl.querySelectorAll('.cell img');
-    const names = colEl.querySelectorAll('.cell .name');
-    for(let r=0;r<ROWS;r++){
-      const s = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
-      imgs[r].src = s.img; names[r].textContent = s.name;
-    }
-    const mult = document.getElementById(`col-mult-${c}`);
-    mult.textContent = 'X1';
-    mult.classList.remove('hidden');
-    mult.classList.add('small');
-  }
-  setTimeout(()=> { for(let c=0;c<COLUMNS;c++) document.getElementById(`col-mult-${c}`).classList.add('hidden'); }, 700);
-}
-initBoardVisuals();
-
-(function floatCols(){
-  const root = boardEl;
-  let t = 0;
-  function frame(){
-    t += 0.01;
-    const cols = root.children;
-    for(let i=0;i<cols.length;i++){
-      const a = Math.sin(t + i*0.25)*1.6;
-      cols[i].style.transform = `translateY(${a}px)`;
-    }
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-
-window.addEventListener('beforeunload', ()=>{
-  playlist.forEach(p=>{ if(p.url && p.file) URL.revokeObjectURL(p.url); });
-});
-
-/* DevTools key-only warning (no spam) */
-(function antiInspectKeyOnly(){
-  const THROTTLE_MS = 800;
-  let lastAction = 0;
-  let active = false;
-
-  function now(){ return Date.now(); }
-
-  function showNeonMessage(){
-    if (active) return;
-    active = true;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'anti-inspect-overlay';
-    overlay.setAttribute('role','alert');
-    Object.assign(overlay.style, {
-      position: 'fixed',
-      inset: '0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: '2147483647',
-      background: 'rgba(0,0,0,0.85)',
-      color: '#39FF14',
-      textAlign: 'center',
-      padding: '20px',
-      boxSizing: 'border-box',
-      WebkitUserSelect: 'none',
-      userSelect: 'none',
-    });
-
-    const box = document.createElement('div');
-    Object.assign(box.style, {
-      maxWidth: '1400px',
-      width: 'calc(100% - 40px)',
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
-      fontSize: 'clamp(18px, 4vw, 44px)',
-      lineHeight: '1.1',
-      fontWeight: '700',
-      letterSpacing: '0.5px',
-      textShadow: `
-        0 0 6px rgba(57,255,20,0.9),
-        0 0 12px rgba(57,255,20,0.7),
-        0 0 20px rgba(57,255,20,0.5)
-      `,
-      transform: 'translateY(-2px)',
-      pointerEvents: 'auto'
-    });
-
-    box.innerText = 'nuh-uh no inspect element (if this is a false warning ignore this)';
-
-    const hint = document.createElement('div');
-    hint.innerText = 'Click to dismiss';
-    Object.assign(hint.style, {
-      marginTop: '18px',
-      fontSize: 'clamp(12px, 1.6vw, 16px)',
-      fontWeight: '600',
-      opacity: '0.85'
-    });
-
-    const inner = document.createElement('div');
-    inner.style.textAlign = 'center';
-    inner.appendChild(box);
-    inner.appendChild(hint);
-
-    overlay.appendChild(inner);
-    document.documentElement.appendChild(overlay);
-
-    const prevPointer = document.documentElement.style.pointerEvents;
-    document.documentElement.style.pointerEvents = 'none';
-    overlay.style.pointerEvents = 'auto';
-
-    function overlayKeyHandler(e){
-      try { e.preventDefault(); e.stopImmediatePropagation(); } catch(_){}
-    }
-    window.addEventListener('keydown', overlayKeyHandler, {capture:true});
-
-    function dismiss(){
-      try {
-        window.removeEventListener('keydown', overlayKeyHandler, {capture:true});
-      } catch(_) {}
-      try {
-        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      } catch(_) {}
-      document.documentElement.style.pointerEvents = prevPointer || '';
-      active = false;
-      lastAction = now();
+        "performance": round(performance, 2),
+        "win_rate": round(win_rate, 2),
+        "trades_this_period": trades,
+        "wins": wins,
+        "period_start_balance": round(start, 2),
+        "balance": round(balance, 2)
     }
 
-    overlay.addEventListener('click', dismiss, {once:true});
-    overlay.addEventListener('touchstart', dismiss, {once:true});
-  }
+# Pydantic models
+class UserUpdate(BaseModel):
+    nickname: Optional[str] = None
+    balance: Optional[float] = None
+    trades: Optional[int] = None
+    wins: Optional[int] = None
+    period_start_balance: Optional[float] = None
 
-  function triggerWarning(){
-    if (now() - lastAction < THROTTLE_MS) return;
-    lastAction = now();
-    try { showNeonMessage(); } catch(_) {}
-  }
+class TradeRecord(BaseModel):
+    result: str = Field(..., description='Either "win" or "lose"')
+    amount: Optional[float] = None
+    nickname: Optional[str] = None  # optional nickname to update on trade
 
-  function isDevShortcut(e){
-    try {
-      const key = (e.key || '').toString().toUpperCase();
-      if (key === 'F12') return true;
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C','P'].includes(key)) return true;
-      if ((e.ctrlKey || e.metaKey) && key === 'U') return true;
-      return false;
-    } catch(_) { return false; }
-  }
+app = FastAPI(title="Kenzies Fridge Leaderboard API")
 
-  window.addEventListener('keydown', (e) => {
-    if (e.repeat) return;
-    if (active) return;
-    if (isDevShortcut(e)){
-      try { e.preventDefault(); e.stopImmediatePropagation(); } catch(_) {}
-      triggerWarning();
-    }
-  }, {capture:true});
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-  window.addEventListener('beforeunload', function(){
-    try { } catch(_) {}
-  });
-})();
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-/* ---------------------------
-   CHEAT CODE: Ctrl+Q -> give 5000 balance, only once per 1 hour per user
---------------------------- */
-function _cheatKeyForUser(uid){ return `cheat_ctrl_q_ts_${uid}`; }
-function _readCheatTs(uid){
-  try{
-    const raw = localStorage.getItem(_cheatKeyForUser(uid));
-    const n = Number(raw);
-    if(!isFinite(n)) return 0;
-    return n;
-  }catch(e){ return 0; }
-}
-function _writeCheatTs(uid, ts){
-  try{ localStorage.setItem(_cheatKeyForUser(uid), String(ts)); }catch(e){}
-}
-function _canUseCheat(uid){
-  const last = _readCheatTs(uid);
-  if(!last) return true;
-  const oneHour = 60*60*1000;
-  return (Date.now() - last) >= oneHour;
-}
-function _msLeftForCheat(uid){
-  const last = _readCheatTs(uid);
-  if(!last) return 0;
-  const oneHour = 60*60*1000;
-  const left = oneHour - (Date.now() - last);
-  return Math.max(0, left);
-}
-window.addEventListener('keydown', (e) => {
-  try{
-    const key = (e.key || '').toString().toLowerCase();
-    if(key === 'q' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey){
-      const activeEl = document.activeElement;
-      const tag = activeEl && (activeEl.tagName || '').toUpperCase();
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || activeEl.isContentEditable;
-      if(isTyping) return;
-      e.preventDefault && e.preventDefault();
-      const uid = _getUserIdForSell();
-      if(!_canUseCheat(uid)){
-        const msLeft = _msLeftForCheat(uid);
-        const pretty = _hoursMinutesFromMs(msLeft);
-        // use non-blocking toast for cooldown message
-        showToast(`Cheat on cooldown. Try again in ${pretty.hours}h ${pretty.minutes}m.`);
-        return;
-      }
-      // give the user +20k (additive)
-      try{
-        const addAmount = 20000;
-        setBalance((window.balance || 0) + addAmount);
-        try{ localStorage.setItem('kf_balance', String(window.balance)); }catch(e){}
-        _writeCheatTs(uid, Date.now());
-        // show a nice custom toast instead of alert
-        showToast(`Cheat activated: +${formatCurrency(20000)} — enjoy!`);
-      }catch(e){
-        console.warn('cheat apply failed', e);
-        showToast('Cheat failed to apply.');
-      }
-    }
-  }catch(e){}
-});
+@app.get("/", response_class=FileResponse)
+def root_index():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, media_type="text/html")
+    return JSONResponse({"message": "Kenzies Fridge API - static index not found"}, status_code=200)
 
-/* ---------------------------
-   Initializations
-   --------------------------- */
-(function initBoardAndState(){
-  try{
-    const localBal = localStorage.getItem('kf_balance');
-    if(localBal !== null){
-      setBalance(Number(localBal));
-    } else {
-      setBalance(INITIAL_BALANCE);
-      try{ localStorage.setItem('kf_balance', String(INITIAL_BALANCE)); }catch(e){}
-    }
-  }catch(e){
-    setBalance(INITIAL_BALANCE);
-  }
-})();
+@app.on_event("startup")
+def startup_info():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    logger.info(f"Starting Kenzies Fridge API")
+    logger.info(f"STATIC_DIR = {os.path.abspath(STATIC_DIR)}")
+    logger.info(f"index.html exists: {os.path.exists(index_path)} -> {index_path}")
+    try:
+        files = os.listdir(STATIC_DIR)
+        logger.info(f"static/*: {files[:30]}")
+    except Exception as e:
+        logger.info(f"Could not list static dir: {e}")
 
-setInterval(()=> _updateSellFeetButtonState(), 60*1000);
-
-/* ---------------------------
-   LIVE WINS / leaderboard related functions
-   - IMPORTANT: never use user_id as nickname in UI
---------------------------- */
-
-/**
- * addLiveWinLocal(entry)
- * - entry: { ts, user_id, nickname, result, amount }
- * Adds the entry to the live wins box UI (prepended).
- * NOTE: This function will NOT display user_id as nickname. If nickname is empty, displays "Anon".
- */
-function addLiveWinLocal(entry){
-  try{
-    const list = document.getElementById('liveWinsList');
-    if(!list) return;
-    const row = document.createElement('div');
-    row.className = 'lw-item ' + (entry.result === 'win' ? 'win' : 'lose');
-    // never use user_id as nickname in UI
-    const rawNick = (entry.nickname || '').trim();
-    const nick = rawNick.length ? rawNick : 'Anon';
-    const ava = (nick.trim().length ? nick.slice(0,2).toUpperCase() : 'AN');
-    const amt = Number(entry.amount || 0);
-    const amtText = (entry.result === 'win') ? `+${abbreviateNumber(amt)}` : `-${abbreviateNumber(amt)}`;
-    row.innerHTML = `<div class="left"><div class="ava">${ava}</div><div class="nick" title="${nick}">${nick}</div></div><div class="amt">${amtText}</div>`;
-    list.prepend(row);
-    while(list.childElementCount > 18) list.lastChild.remove();
-    computeAndRenderLiveSummaryFromUI();
-  }catch(e){ console.warn('addLiveWinLocal', e); }
-}
-
-/**
- * computeAndRenderLiveSummaryFromUI()
- */
-function computeAndRenderLiveSummaryFromUI(){
-  try{
-    const list = document.getElementById('liveWinsList');
-    if(!list) return;
-    const rows = Array.from(list.children);
-    const map = {};
-    rows.forEach(r => {
-      const nick = (r.querySelector('.nick') && r.querySelector('.nick').textContent.trim()) || '';
-      const amtEl = r.querySelector('.amt');
-      const raw = amtEl ? amtEl.textContent.replace(/\s/g,'') : '0';
-      const val = parseAbbreviated(raw) || 0;
-      const isWin = r.classList.contains('win');
-      let delta = val;
-      if(raw && raw[0] === '+') delta = Math.abs(val);
-      else if(raw && raw[0] === '-') delta = -Math.abs(val);
-      else delta = isWin ? Math.abs(val) : -Math.abs(val);
-      const s = map[nick] || { net:0, wins:0, losses:0, trades:0 };
-      s.net = Math.round((s.net + delta)*100)/100;
-      if(isWin) s.wins++; else s.losses++;
-      s.trades++;
-      map[nick] = s;
-    });
-    const entries = Object.entries(map).map(([nick, stats]) => ({ nick, ...stats }));
-    entries.sort((a,b) => Math.abs(b.net) - Math.abs(a.net));
-    const rowsOut = entries.slice(0,5);
-    const container = document.getElementById('lw-summary-rows');
-    container.innerHTML = '';
-    if(rowsOut.length === 0){
-      container.innerHTML = '<div style="color:var(--muted)">No recent activity</div>';
-      return;
-    }
-    rowsOut.forEach(e => {
-      const div = document.createElement('div');
-      div.className = 's-row';
-      const netColor = e.net >= 0 ? 'var(--accent-green)' : '#ff6b6b';
-      div.innerHTML = `<div class="s-name">${e.nick}</div><div style="text-align:right"><div style="color:${netColor};font-weight:700">${e.net>=0?'+':'-'}${formatCurrency(Math.abs(e.net))}</div><div class="muted" style="font-size:11px">${e.wins}W ${e.losses}L</div></div>`;
-      container.appendChild(div);
-    });
-  }catch(e){ console.warn('computeAndRenderLiveSummaryFromUI', e); }
-}
-
-/**
- * fetchLiveWinsFromServer(limit)
- * - fetches /api/live-wins?limit=N and updates UI (full replace)
- * NOTE: Will not display user_id as nickname; falls back to 'Anon'.
- */
-let _lw_polling = null;
-async function fetchLiveWinsFromServer(limit = 12){
-  try{
-    const r = await fetch(`/api/live-wins?limit=${encodeURIComponent(limit)}`);
-    if(!r.ok) return;
-    const json = await r.json();
-    if(!json) return;
-    const recent = json.recent_trades || [];
-    const list = document.getElementById('liveWinsList');
-    if(!list) return;
-    list.innerHTML = '';
-    recent.slice(0,18).forEach(entry => {
-      const row = document.createElement('div');
-      row.className = 'lw-item ' + (entry.result === 'win' ? 'win' : 'lose');
-      // IMPORTANT: never display user_id as nickname
-      const nickRaw = (entry.nickname || '').trim();
-      const nick = nickRaw.length ? nickRaw : 'Anon';
-      const ava = (nick.trim().length ? nick.slice(0,2).toUpperCase() : 'AN');
-      const amt = Number(entry.amount || 0);
-      const amtText = (entry.result === 'win') ? `+${abbreviateNumber(amt)}` : `-${abbreviateNumber(amt)}`;
-      row.innerHTML = `<div class="left"><div class="ava">${ava}</div><div class="nick" title="${nick}">${nick}</div></div><div class="amt">${amtText}</div>`;
-      list.appendChild(row);
-    });
-    const container = document.getElementById('lw-summary-rows');
-    container.innerHTML = '';
-    if(json.summary && typeof json.summary === 'object'){
-      const arr = Object.entries(json.summary).map(([nick, s]) => ({ nick, ...s }));
-      arr.sort((a,b) => Math.abs(b.net) - Math.abs(a.net));
-      arr.slice(0,5).forEach(e => {
-        const div = document.createElement('div');
-        const netColor = e.net >= 0 ? 'var(--accent-green)' : '#ff6b6b';
-        div.className = 's-row';
-        div.innerHTML = `<div class="s-name">${e.nick}</div><div style="text-align:right"><div style="color:${netColor};font-weight:700">${e.net>=0?'+':'-'}${formatCurrency(Math.abs(e.net))}</div><div class="muted" style="font-size:11px">${e.wins||0}W ${e.losses||0}L</div></div>`;
-        container.appendChild(div);
-      });
-    } else {
-      computeAndRenderLiveSummaryFromUI();
-    }
-    const lf = document.getElementById('lw-last-refresh');
-    lf.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-  }catch(e){}
-}
-
-function startLiveWinsPolling(){
-  fetchLiveWinsFromServer(12);
-  _lw_polling = setInterval(()=> fetchLiveWinsFromServer(12), 3000);
-}
-function stopLiveWinsPolling(){
-  if(_lw_polling) clearInterval(_lw_polling);
-  _lw_polling = null;
-}
-
-const lwRefreshBtn = document.getElementById('lw-refresh-btn');
-if(lwRefreshBtn) lwRefreshBtn.addEventListener('click', ()=> fetchLiveWinsFromServer(12));
-
-startLiveWinsPolling();
-
-async function sendTradeToServer(userId, result, amount){
-  try{
-    await fetch(`/api/user/${encodeURIComponent(userId)}/trade`, {
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body: JSON.stringify({ result, amount })
-    });
-  }catch(e){}
-}
-
-/* ---------------------------
-   LEADERBOARD modal + NICKNAME PROMPT
-   - When saving a nickname, display: "Nickname set to {nick}"
-   - Never display user_id as nickname (use "Anon" if none)
---------------------------- */
-
-</script>
-
-<!-- =========================
-     FULL-SCREEN LEADERBOARD MODAL + NICKNAME PROMPT
-   ========================= -->
-
-<div id="kf-leaderboard-modal" class="modal-overlay" aria-hidden="true" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="kf-leaderboard-title">
-    <div class="kf-leaderboard-hero" style="align-items:center">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.12));display:flex;align-items:center;justify-content:center">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--accent-green)" aria-hidden="true"><path d="M12 2l2.39 6.96L21 10.24l-5 3.65L17.78 22 12 18.27 6.22 22 8 13.89 3 10.24l6.61-1.28L12 2z"/></svg>
-        </div>
-        <h2 id="kf-leaderboard-title">LEADERBOARD</h2>
-        <div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.12));display:flex;align-items:center;justify-content:center">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--accent-green)" aria-hidden="true"><path d="M12 2l2.39 6.96L21 10.24l-5 3.65L17.78 22 12 18.27 6.22 22 8 13.89 3 10.24l6.61-1.28L12 2z"/></svg>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div class="muted" id="kf-last-sync-main">—</div>
-      </div>
-    </div>
-
-    <div class="kf-leaderboard-grid" style="margin-top:12px">
-      <div class="kf-leaderboard-main">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="muted">Top 100 balances</div>
-          <div style="display:flex;gap:8px">
-            <input id="kf-nickname-main" maxlength="40" type="text" placeholder="Enter nickname (max 40)" style="padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)">
-            <button id="kf-save-nick-main" class="btn" type="button">Save Nick</button>
-            <button id="kf-refresh-main" class="small" type="button">Refresh</button>
-          </div>
-        </div>
-
-        <table class="kf-table" role="table" aria-label="Leaderboard table" style="margin-top:12px">
-          <thead>
-            <tr>
-              <th style="width:70%;">User</th>
-              <th style="width:30%;">Win Rate</th>
-            </tr>
-          </thead>
-          <tbody id="kf-table-body">
-            <tr><td colspan="2" class="muted">Loading leaderboard...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="kf-leaderboard-right">
-        <div style="font-weight:700">Monthly Podium</div>
-        <div id="kf-podium-main" style="margin-top:8px"><div class="muted">Loading...</div></div>
-
-        <div style="margin-top:12px;border-top:1px dashed rgba(255,255,255,0.04);padding-top:10px">
-          <div class="muted">Your ID:</div>
-          <div style="font-weight:800" id="kf-userid-main">—</div>
-          <div class="muted" style="margin-top:8px">Your balance stored locally: <span id="kf-local-bal">—</span></div>
-        </div>
-
-        <div style="margin-top:12px">
-          <button id="kf-close" class="small" type="button">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="kf-nickname-modal" class="modal-overlay" aria-hidden="true" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="kf-nick-title">
-    <h3 id="kf-nick-title" style="color:var(--accent-green);margin:0 0 8px 0">Pick a nickname</h3>
-    <p class="muted" style="margin:0 0 12px 0">This will be shown on the leaderboard. You will only be asked once.</p>
-    <div style="display:flex;gap:8px">
-      <input id="kf-nick-input" maxlength="40" type="text" placeholder="Nickname" style="flex:1;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)">
-      <button id="kf-nick-save" class="btn" type="button">Save</button>
-    </div>
-    <div style="margin-top:12px"><button id="kf-nick-skip" class="small" type="button">Skip (ask me later)</button></div>
-  </div>
-</div>
-
-<script>
-/* Leaderboard modal script (updated to match column changes and podium no-winners message)
-   - Uses /api endpoints (best-effort)
-   - Renders the table in the modal (kf-table-body)
-   - Keeps nickname modal separate.
-   - When saving nickname shows toast "Nickname set to {nick}".
-   - Wrapped in DOMContentLoaded so all elements are present and event wiring is reliable.
-*/
-document.addEventListener('DOMContentLoaded', function(){
-  const API_BASE = '/api';
-  const MAX_NICK_LEN = 40;
-
-  const leaderboardBtn = document.getElementById('leaderboardBtn');
-  const lbModal = document.getElementById('kf-leaderboard-modal');
-  const lbClose = document.getElementById('kf-close');
-  const lbTableBody = document.getElementById('kf-table-body');
-  const podiumMain = document.getElementById('kf-podium-main');
-  const lastSyncMain = document.getElementById('kf-last-sync-main');
-  const refreshBtn = document.getElementById('kf-refresh-main');
-  const nickInputMain = document.getElementById('kf-nickname-main');
-  const saveNickMain = document.getElementById('kf-save-nick-main');
-  const userIdEl = document.getElementById('kf-userid-main');
-  const localBalEl = document.getElementById('kf-local-bal');
-
-  const nickModal = document.getElementById('kf-nickname-modal');
-  const nickModalInput = document.getElementById('kf-nick-input');
-  const nickModalSave = document.getElementById('kf-nick-save');
-  const nickModalSkip = document.getElementById('kf-nick-skip');
-
-  // identity
-  let userId = ensureLocalUserId();
-  userIdEl.textContent = userId;
-
-  let nickname = (localStorage.getItem('kf_nickname') || '').slice(0,MAX_NICK_LEN);
-  if(nickname) nickInputMain.value = nickname;
-
-  function showLbModal(show=true){
-    if(show){
-      lbModal.style.display = 'flex';
-      lbModal.classList.add('active');
-      lbModal.setAttribute('aria-hidden','false');
-    } else {
-      lbModal.classList.remove('active');
-      lbModal.style.display = 'none';
-      lbModal.setAttribute('aria-hidden','true');
-    }
-  }
-  function showNickModal(show=true){
-    if(show){
-      nickModal.style.display = 'flex';
-      nickModal.classList.add('active');
-      nickModal.setAttribute('aria-hidden','false');
-      nickModalInput.focus();
-    } else {
-      nickModal.classList.remove('active');
-      nickModal.style.display = 'none';
-      nickModal.setAttribute('aria-hidden','true');
-    }
-  }
-
-  async function apiGet(path){
-    try{
-      const r = await fetch(API_BASE + path, { cache:'no-store' });
-      if(!r.ok) throw new Error('Network');
-      return await r.json();
-    }catch(e){
-      console.warn('apiGet', e);
-      return null;
-    }
-  }
-  async function apiPost(path,payload){
-    try{
-      const r = await fetch(API_BASE + path, {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      if(!r.ok) throw new Error('Network');
-      return await r.json();
-    }catch(e){
-      console.warn('apiPost', e);
-      return null;
-    }
-  }
-
-  // Format a single row into the table
-  function insertTableRow(container, idx, user, isMe=false){
-    const tr = document.createElement('tr');
-    if(isMe) tr.className = 'me';
-    const displayName = (user.nickname || '').trim() || 'Anon';
-    const winRateVal = Number(user.performance ?? user.win_rate ?? 0);
-    const perfClass = (winRateVal >= 0) ? 'kf-perf' : 'kf-perf negative';
-    const initials = displayName.slice(0,2).toUpperCase();
-    tr.innerHTML = `
-      <td>
-        <div class="kf-row-left">
-          <div style="width:28px;color:var(--muted);text-align:right;font-weight:700">${idx+1}</div>
-          <div class="kf-avatar" aria-hidden="true">${initials}</div>
-          <div style="min-width:0">
-            <div class="kf-username">${displayName}</div>
-            <div class="kf-user-meta">${formatCurrency(Number(user.balance||0))}</div>
-          </div>
-        </div>
-      </td>
-      <td><div class="${perfClass}">${(winRateVal>=0?'+':'')}${winRateVal.toFixed(1)}%</div></td>
-    `;
-    container.appendChild(tr);
-  }
-
-  function renderLeaderboard(list){
-    lbTableBody.innerHTML = '';
-    if(!list || !Array.isArray(list) || list.length === 0){
-      lbTableBody.innerHTML = '<tr><td colspan="2" class="muted">No leaderboard data yet.</td></tr>';
-      return;
-    }
-    list.slice(0,100).forEach((u, idx) => {
-      insertTableRow(lbTableBody, idx, u, u.user_id === userId);
-    });
-  }
-
-  function renderPodium(month, p){
-    podiumMain.innerHTML = '';
-    if(!p || !Array.isArray(p) || p.length===0){
-      podiumMain.innerHTML = '<div class="muted">No winners this month — check back by the end of the month to see</div>';
-      return;
-    }
-    p.forEach(item=>{
-      const r = document.createElement('div');
-      r.style.display='flex'; r.style.justifyContent='space-between'; r.style.alignItems='center'; r.style.padding='6px';
-      const displayName = (item.nickname || '').trim() || 'Anon';
-      r.innerHTML = `<div style="font-weight:800">${item.position}. ${displayName}</div><div style="color:var(--muted)">${formatCurrency((item.balance||0))}</div>`;
-      podiumMain.appendChild(r);
-    });
-    const m = document.createElement('div'); m.className='muted'; m.style.marginTop='6px'; m.textContent = `Month: ${month}`;
-    podiumMain.appendChild(m);
-  }
-
-  function demoLeaderboard(){
-    return [
-      { user_id:'p1', nickname:'Player', balance:12000, performance:128.3, win_rate:36, trades:280 },
-      { user_id:'p2', nickname:'Player', balance:11800, performance:120.1, win_rate:36, trades:280 },
-      { user_id:'p3', nickname:'Player', balance:11600, performance:113.5, win_rate:36, trades:280 },
-      { user_id:'p4', nickname:'Player', balance:11000, performance:102.2, win_rate:36, trades:280 },
-      { user_id:'p5', nickname:'Player', balance:10500, performance:92.7, win_rate:36, trades:280 },
-      { user_id:'p6', nickname:'Player', balance:9800, performance:82.3, win_rate:36, trades:280 },
-      { user_id:'p7', nickname:'Player', balance:9200, performance:72.8, win_rate:36, trades:280 },
-      { user_id:'p8', nickname:'Player', balance:8600, performance:63.1, win_rate:36, trades:280 },
-      { user_id:'p9', nickname:'Player', balance:8000, performance:54.0, win_rate:36, trades:280 },
-      { user_id:'p10', nickname:'Player', balance:7400, performance:45.2, win_rate:36, trades:280 },
-    ];
-  }
-
-  async function refreshAll(){
-    lastSyncMain.textContent = '...';
-    const lb = await apiGet('/leaderboard?limit=100');
-    if(lb && Array.isArray(lb.leaderboard)){
-      renderLeaderboard(lb.leaderboard);
-    } else {
-      renderLeaderboard(demoLeaderboard());
+@app.get("/_debug/static-files")
+def debug_static_files():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    exists = os.path.exists(index_path)
+    try:
+        listing = sorted(os.listdir(STATIC_DIR))
+    except Exception as e:
+        listing = f"error: {e}"
+    return {
+        "static_dir": os.path.abspath(STATIC_DIR),
+        "index_exists": exists,
+        "index_path": index_path,
+        "listing_sample": listing[:200] if isinstance(listing, list) else listing,
     }
 
-    const winners = await apiGet('/winners');
-    if(winners && winners.latest){
-      renderPodium(winners.latest, winners.winners && winners.winners.podium ? winners.winners.podium : []);
-    } else {
-      renderPodium(null, []);
+@app.get("/api/leaderboard")
+def get_leaderboard(limit: int = 100):
+    with _lock:
+        db = _read_db()
+    users = db.get("users", {})
+    arr = []
+    for uid, u in users.items():
+        metrics = compute_user_metrics(u)
+        arr.append({
+            "user_id": uid,
+            "nickname": u.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"]
+        })
+    arr.sort(key=lambda x: x["balance"], reverse=True)
+    return {"leaderboard": arr[:max(0, min(limit, 1000))], "timestamp": _now_iso()}
+
+@app.get("/api/user/{user_id}")
+def get_user(user_id: str):
+    with _lock:
+        db = _read_db()
+    user = db.get("users", {}).get(user_id)
+    if user:
+        metrics = compute_user_metrics(user)
+        return {
+            "user_id": user_id,
+            "nickname": user.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"],
+            "wins": metrics["wins"],
+            "period_start_balance": metrics["period_start_balance"],
+            "last_update": user.get("last_update")
+        }
+    else:
+        return {
+            "user_id": user_id,
+            "nickname": "",
+            "balance": round(START_BALANCE, 2),
+            "performance": 0.0,
+            "win_rate": 0.0,
+            "trades_this_period": 0,
+            "wins": 0,
+            "period_start_balance": round(START_BALANCE, 2),
+            "last_update": None
+        }
+
+@app.post("/api/user/{user_id}")
+def update_user(user_id: str, upd: UserUpdate):
+    with _lock:
+        db = _read_db()
+        users = db.setdefault("users", {})
+        u = users.setdefault(user_id, {
+            "nickname": "",
+            "balance": START_BALANCE,
+            "last_update": None,
+            "trades": 0,
+            "wins": 0,
+            "period_start_balance": START_BALANCE
+        })
+
+        changed_nick = None
+        if upd.nickname is not None:
+            n = (upd.nickname or "").strip()[:40]
+            if n != u.get("nickname", ""):
+                changed_nick = n
+                u["nickname"] = n
+
+        if upd.balance is not None:
+            try:
+                u["balance"] = round(float(upd.balance), 2)
+            except Exception:
+                u["balance"] = START_BALANCE
+
+        if upd.trades is not None:
+            try:
+                u["trades"] = int(upd.trades)
+            except Exception:
+                u["trades"] = int(u.get("trades", 0) or 0)
+
+        if upd.wins is not None:
+            try:
+                u["wins"] = int(upd.wins)
+            except Exception:
+                u["wins"] = int(u.get("wins", 0) or 0)
+
+        if upd.period_start_balance is not None:
+            try:
+                u["period_start_balance"] = round(float(upd.period_start_balance), 2)
+            except Exception:
+                u["period_start_balance"] = START_BALANCE
+
+        u["last_update"] = _now_iso()
+
+        if changed_nick:
+            recent = db.setdefault("recent_trades", [])
+            for ent in recent:
+                try:
+                    if ent.get("user_id") == user_id:
+                        ent["nickname"] = changed_nick
+                except Exception:
+                    pass
+
+        _write_db(db)
+        metrics = compute_user_metrics(u)
+
+    resp = {
+        "status": "ok",
+        "user": {
+            "user_id": user_id,
+            "nickname": u.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"],
+            "wins": metrics["wins"],
+            "period_start_balance": metrics["period_start_balance"],
+            "last_update": u.get("last_update")
+        }
+    }
+    if changed_nick:
+        resp["message"] = f"nickname set to {changed_nick}"
+    return resp
+
+@app.post("/api/user/{user_id}/trade")
+def record_trade(user_id: str, tr: TradeRecord):
+    with _lock:
+        db = _read_db()
+        users = db.setdefault("users", {})
+        u = users.setdefault(user_id, {
+            "nickname": "",
+            "balance": START_BALANCE,
+            "last_update": None,
+            "trades": 0,
+            "wins": 0,
+            "period_start_balance": START_BALANCE
+        })
+
+        changed_nick = None
+        if tr.nickname is not None:
+            n = (tr.nickname or "").strip()[:40]
+            if n != u.get("nickname", ""):
+                changed_nick = n
+                u["nickname"] = n
+                recent = db.setdefault("recent_trades", [])
+                for ent in recent:
+                    try:
+                        if ent.get("user_id") == user_id:
+                            ent["nickname"] = changed_nick
+                    except Exception:
+                        pass
+
+        u.setdefault("trades", 0)
+        u.setdefault("wins", 0)
+        u.setdefault("period_start_balance", START_BALANCE)
+        u.setdefault("balance", START_BALANCE)
+
+        res = tr.result.lower()
+        if res not in ("win", "lose"):
+            raise HTTPException(status_code=400, detail='result must be "win" or "lose"')
+
+        u["trades"] = int(u.get("trades", 0)) + 1
+        if res == "win":
+            u["wins"] = int(u.get("wins", 0)) + 1
+
+        amt = 0.0
+        if tr.amount is not None:
+            try:
+                amt = float(tr.amount)
+            except Exception:
+                amt = 0.0
+
+        if tr.amount is not None:
+            if res == "win":
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) + amt, 2)
+            else:
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) - amt, 2)
+
+        u["last_update"] = _now_iso()
+
+        trade_entry = {
+            "ts": u["last_update"],
+            "user_id": user_id,
+            "nickname": u.get("nickname", "") or "",
+            "result": res,
+            "amount": round(amt, 2)
+        }
+        recent = db.setdefault("recent_trades", [])
+        recent.insert(0, trade_entry)
+        MAX_RECENT_TRADES = 500
+        if len(recent) > MAX_RECENT_TRADES:
+            del recent[MAX_RECENT_TRADES:]
+
+        _write_db(db)
+
+        metrics = compute_user_metrics(u)
+
+    resp = {
+        "status": "ok",
+        "user": {
+            "user_id": user_id,
+            "nickname": u.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"],
+            "wins": metrics["wins"],
+            "period_start_balance": metrics["period_start_balance"],
+            "last_update": u.get("last_update")
+        }
+    }
+    if changed_nick:
+        resp["message"] = f"nickname set to {changed_nick}"
+    return resp
+
+@app.get("/api/live-wins")
+def get_live_wins(limit: int = 100, minutes: Optional[int] = None, nickname: Optional[str] = None):
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be > 0")
+    limit = min(limit, 500)
+
+    with _lock:
+        db = _read_db()
+        recent = list(db.get("recent_trades", []))
+
+    cutoff = None
+    if minutes is not None:
+        try:
+            minutes = int(minutes)
+            cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+        except Exception:
+            raise HTTPException(status_code=400, detail="invalid minutes parameter")
+
+    def parse_ts(s):
+        try:
+            if s.endswith("Z"):
+                s2 = s[:-1]
+            else:
+                s2 = s
+            return datetime.fromisoformat(s2)
+        except Exception:
+            return None
+
+    filtered = []
+    lower_filter = nickname.lower().strip() if nickname else None
+
+    for entry in recent:
+        if cutoff:
+            ts = parse_ts(entry.get("ts", ""))
+            if not ts or ts < cutoff:
+                continue
+        if lower_filter:
+            if (entry.get("nickname") or "").strip().lower() != lower_filter:
+                continue
+        filtered.append(entry)
+        if len(filtered) >= limit:
+            break
+
+    summary = {}
+    for e in filtered:
+        nick = (e.get("nickname") or "")[:40]
+        key = nick if nick.strip() else 'Anon'
+        s = summary.setdefault(key, {"net": 0.0, "wins": 0, "losses": 0, "trades": 0})
+        amt = float(e.get("amount", 0.0) or 0.0)
+        if e.get("result") == "win":
+            s["net"] = round(s["net"] + amt, 2)
+            s["wins"] += 1
+        else:
+            s["net"] = round(s["net"] - amt, 2)
+            s["losses"] += 1
+        s["trades"] += 1
+
+    return {
+        "recent_trades": filtered,
+        "summary": summary,
+        "timestamp": _now_iso()
     }
 
-    lastSyncMain.textContent = new Date().toLocaleTimeString();
-  }
+@app.post("/api/close_month")
+def post_close_month():
+    with _lock:
+        db = _read_db()
+        prev_month = _prev_month_key()
+        if prev_month in db.get("monthly_winners", {}):
+            return {"status": "already_closed", "month": prev_month}
+        podium = compute_podium_snapshot(db.get("users", {}), top_n=3)
+        db.setdefault("monthly_winners", {})[prev_month] = {"podium": podium, "closed_at": _now_iso()}
+        db["last_month_closed"] = _get_month_key()
+        _write_db(db)
+    return {"status": "closed", "month": prev_month, "podium": podium}
 
-  // Replace saveUserState with canonicalized ID and improved feedback
-  async function saveUserState(nick, bal){
-    const payload = {};
-    if(nick !== undefined) payload.nickname = (nick||'').slice(0,MAX_NICK_LEN);
-    if(bal !== undefined) payload.balance = Number(bal);
+@app.get("/api/winners/{month}")
+def get_winners(month: str):
+    with _lock:
+        db = _read_db()
+    winners = db.get("monthly_winners", {}).get(month)
+    if not winners:
+        raise HTTPException(status_code=404, detail="No winners for that month")
+    return {"month": month, "winners": winners}
 
-    const uid = ensureLocalUserId();
-    try{
-      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(uid)}`, {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json().catch(()=>null);
-      if(!res.ok){
-        const msg = (json && (json.detail || json.message)) || `Server error ${res.status}`;
-        showToast(`Failed to save: ${msg}`);
-        return null;
-      }
-      if(json && json.status === 'created') showToast('Account created');
-      else showToast('Saved');
-      return json;
-    }catch(e){
-      showToast('Network error saving user');
-      return null;
-    }
-  }
-
-  // Wrap setBalance to save on server & localStorage (non-blocking)
-  try{
-    if(window.setBalance && typeof window.setBalance === 'function'){
-      const _orig = window.setBalance.bind(window);
-      window.setBalance = function(v){
-        _orig(v);
-        const balNow = window.balance || Number(document.getElementById('balance').textContent || 0);
-        try{ localStorage.setItem('kf_balance', String(balNow)); }catch(e){}
-        saveUserState(localStorage.getItem('kf_nickname') || '', balNow);
-        setTimeout(()=>{ refreshAll(); }, 800);
-      };
-    }
-  }catch(e){ console.warn('wrap setBalance failed', e); }
-
-  (async function init(){
-    nickname = (localStorage.getItem('kf_nickname') || '').slice(0,MAX_NICK_LEN);
-    if(nickname){
-      nickInputMain.value = nickname;
-      nickModalInput.value = nickname;
-    }
-
-    const serverUser = await apiGet(`/user/${encodeURIComponent(userId)}`);
-    if(serverUser && serverUser.user_id){
-      if(serverUser.nickname){
-        nickname = serverUser.nickname.slice(0,MAX_NICK_LEN);
-        localStorage.setItem('kf_nickname', nickname);
-        nickInputMain.value = nickname;
-        nickModalInput.value = nickname;
-      }
-      if(typeof serverUser.balance !== 'undefined'){
-        try{
-          if(window.setBalance && typeof window.setBalance === 'function'){
-            window.setBalance(Number(serverUser.balance));
-          } else {
-            document.getElementById('balance').textContent = Number(serverUser.balance).toFixed(2);
-          }
-        }catch(e){}
-      }
-    } else {
-      const localBal = localStorage.getItem('kf_balance');
-      if(localBal !== null){
-        try{ if(window.setBalance) window.setBalance(Number(localBal)); else document.getElementById('balance').textContent = Number(localBal).toFixed(2); }catch(e){}
-      }
-      saveUserState(nickname || '', Number(document.getElementById('balance').textContent || 0));
-    }
-
-    localBalEl.textContent = formatCurrency(Number(localStorage.getItem('kf_balance') || Number(document.getElementById('balance').textContent || 0)));
-
-    const seenNick = !!localStorage.getItem('kf_nickname');
-    if(!seenNick){
-      showNickModal(true);
-    }
-
-    await refreshAll();
-    setInterval(refreshAll, 15000);
-  })();
-
-  // UI events
-  if(leaderboardBtn) leaderboardBtn.addEventListener('click', ()=> showLbModal(true));
-  if(lbClose) lbClose.addEventListener('click', ()=> showLbModal(false));
-  if(refreshBtn) refreshBtn.addEventListener('click', ()=> refreshAll());
-
-  if(saveNickMain) saveNickMain.addEventListener('click', async ()=>{
-    const v = (nickInputMain.value || '').trim().slice(0,MAX_NICK_LEN);
-    if(!v) return alert('Enter a nickname (max 40 chars)');
-    nickname = v;
-    localStorage.setItem('kf_nickname', nickname);
-    nickModalInput.value = nickname;
-    nickInputMain.value = nickname;
-    const res = await saveUserState(nickname, Number(document.getElementById('balance').textContent || 0));
-    // show confirmation toast
-    showToast(`Nickname set to ${nickname}`);
-    // refresh leaderboard after save
-    setTimeout(()=> refreshAll(), 600);
-  });
-
-  if(nickModalSave) nickModalSave.addEventListener('click', async ()=>{
-    const v = (nickModalInput.value || '').trim().slice(0,MAX_NICK_LEN);
-    if(!v) return alert('Enter a nickname (max 40 chars)');
-    nickname = v;
-    localStorage.setItem('kf_nickname', nickname);
-    const res = await saveUserState(nickname, Number(document.getElementById('balance').textContent || 0));
-    showToast(`Nickname set to ${nickname}`);
-    showNickModal(false);
-    refreshAll();
-  });
-  if(nickModalSkip) nickModalSkip.addEventListener('click', ()=>{
-    localStorage.setItem('kf_nickname_skipped', '1');
-    showNickModal(false);
-  });
-
-  document.addEventListener('keydown', (e)=>{
-    if(e.key === 'Escape'){
-      if(lbModal.style.display === 'flex') showLbModal(false);
-      if(nickModal.style.display === 'flex') showNickModal(false);
-    }
-  });
-
-  // Expose small helper for other UI (if other scripts call it)
-  window.__kf_showLeaderboard = () => showLbModal(true);
-});
-</script>
-
-<!-- ============= RAINBET BUTTON: Wiring only ============= -->
-<script>
-/*
-  ONLY wiring and behavior for the Rainbet button.
-  - Opens the existing #rainbetModal (display:flex + .active) when #rainbetBtn clicked.
-  - Closes modal when "Got it" (#rainCloseBtn) clicked, when overlay clicked outside modal, or ESC pressed.
-  - Triggers a small burstAt visual on the board area when opened (non-blocking).
-  This script intentionally edits only rainbet behavior and nothing else.
-*/
-(function(){
-  try{
-    const rainbetBtn = document.getElementById('rainbetBtn');
-    const rainbetModal = document.getElementById('rainbetModal');
-    const rainCloseBtn = document.getElementById('rainCloseBtn');
-
-    if(!rainbetBtn || !rainbetModal) return;
-
-    function openRain(){
-      try{
-        rainbetModal.style.display = 'flex';
-        rainbetModal.classList.add('active');
-        rainbetModal.setAttribute('aria-hidden','false');
-        // small burst visual in the board center to emphasize opening
-        try{
-          const boardRect = (document.getElementById('board') || document.body).getBoundingClientRect();
-          // burstAt expects coords relative to particlesRoot, which is positioned inside board area.
-          // we use board's center to create a pleasing burst.
-          const x = Math.max(20, Math.round(boardRect.width/2));
-          const y = Math.max(20, Math.round(boardRect.height/2));
-          // call burstAt if available
-          if(typeof burstAt === 'function'){
-            burstAt(x, y, 'rgba(12,240,74,0.95)');
-            // add a second gold burst for emphasis
-            setTimeout(()=> burstAt(x, y, 'rgba(255,215,0,0.95)'), 80);
-          }
-        }catch(_){}
-      }catch(e){ console.warn('openRain error', e); }
-    }
-
-    function closeRain(){
-      try{
-        rainbetModal.classList.remove('active');
-        rainbetModal.style.display = 'none';
-        rainbetModal.setAttribute('aria-hidden','true');
-      }catch(e){ console.warn('closeRain error', e); }
-    }
-
-    rainbetBtn.addEventListener('click', function(e){
-      e && e.preventDefault && e.preventDefault();
-      openRain();
-    });
-
-    if(rainCloseBtn) rainCloseBtn.addEventListener('click', function(e){
-      e && e.preventDefault && e.preventDefault();
-      closeRain();
-    });
-
-    // close when clicking the overlay outside the rain modal
-    rainbetModal.addEventListener('click', function(e){
-      if(e.target === rainbetModal) closeRain();
-    });
-
-    // ESC to close
-    document.addEventListener('keydown', function(e){
-      if(e.key === 'Escape' && rainbetModal.classList.contains('active')) closeRain();
-    });
-  }catch(e){
-    console.warn('rainbet wiring failed', e);
-  }
-})();
-</script>
-
-<!-- Mobile live wins toggle wiring -->
-<script>
-(function(){
-  try{
-    const toggle = document.getElementById('liveWinsToggle');
-    const liveBox = document.getElementById('liveWinsBox');
-    if(!toggle || !liveBox) return;
-    let visible = true;
-    // If screen is small, default to hidden if content likely blocking
-    function updateInitialState(){
-      if(window.innerWidth <= 720){
-        // hide by default on very small screens so it doesn't block
-        visible = false;
-        liveBox.classList.add('mobile-hidden');
-        toggle.textContent = 'LIVE';
-        toggle.setAttribute('aria-expanded', 'false');
-      } else {
-        visible = true;
-        liveBox.classList.remove('mobile-hidden');
-        toggle.textContent = 'LIVE';
-        toggle.setAttribute('aria-expanded', 'true');
-      }
-    }
-    updateInitialState();
-    window.addEventListener('resize', updateInitialState);
-
-    toggle.addEventListener('click', function(e){
-      e && e.preventDefault && e.preventDefault();
-      visible = !visible;
-      if(visible){
-        liveBox.classList.remove('mobile-hidden');
-        toggle.textContent = 'HIDE';
-        toggle.setAttribute('aria-expanded', 'true');
-      } else {
-        liveBox.classList.add('mobile-hidden');
-        toggle.textContent = 'LIVE';
-        toggle.setAttribute('aria-expanded', 'false');
-      }
-    });
-  }catch(e){ console.warn('live toggle wiring failed', e); }
-})();
-</script>
-
-</body>
-</html>
+@app.get("/api/winners")
+def get_latest_winners():
+    with _lock:
+        db = _read_db()
+    mw = db.get("monthly_winners", {})
+    if not mw:
+        return {"latest": None, "monthly_winners": {}}
+    last_month = sorted(mw.keys())[-1]
+    return {"latest": last_month, "winners": mw[last_month], "monthly_winners": mw}
