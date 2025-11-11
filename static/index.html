@@ -3975,6 +3975,40 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 })();
 </script>
+<!-- REPLACED: safe fetch patch (keeps Authorization behavior but avoids dangling DOM references) -->
+<script>
+/* Safe fetch patch for /api calls.
+   - Adds Authorization: Bearer <kf_token> when localStorage.kf_token exists.
+   - Does NOT attempt to wire missing DOM elements (avoids TypeErrors).
+*/
+(function safeApiFetchPatch(){
+  if(window.__kf_fetch_patched) return;
+  try{
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async function(input, init){
+      try{
+        let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        const isApi = typeof url === 'string' && (url.startsWith('/api') || url.indexOf(window.location.origin + '/api') === 0);
+        if(isApi){
+          init = init || {};
+          init.headers = new Headers(init.headers || {});
+          const token = localStorage.getItem('kf_token');
+          if(token){
+            init.headers.set('Authorization', 'Bearer ' + token);
+          }
+        }
+        return await origFetch(input, init);
+      }catch(e){
+        // fallback to original fetch if something goes wrong
+        try { return await origFetch(input, init); } catch(err){ throw err; }
+      }
+    };
+    window.__kf_fetch_patched = true;
+  }catch(e){
+    console.warn('safeApiFetchPatch failed', e);
+  }
+})();
+</script>
 
 </body>
 </html>
