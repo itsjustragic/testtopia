@@ -2833,52 +2833,61 @@ window.addEventListener('keydown', (e) => {
     if(chosen.rarity <= 3) payoutMult = Math.round((payoutMult * (8 + Math.random()*40)) * 100) / 100;
     let payout = Math.round(bet * payoutMult * 100) / 100;
 
-    /* ---------- NEW: force BOTH MONSTER and MEME cases to be hard to win ----------
-       We apply a "win gate" probability so that most drops result in payout = 0 (loss).
-       Meme cases are set to be even harder to win than monster cases. Rare items get a
-       higher chance to pay out; common items mostly result in no payout. Wins that do
-       occur are dampened to keep overall payouts modest.
+    /* ---------- UPDATED: easier wins but much smaller payouts ----------
+       Behavior:
+         - baseWinProb increased so wins are more frequent
+         - keepFactor ranges lowered so wins remain small
+         - payout is capped to a reasonable multiple of the bet
+         - rare items still get a boost to chance, but keepFactor still limits payout
     */
     if(caseMode === 'monster' || caseMode === 'meme'){
-      // base win probability defaults
-      let baseWinProb = (caseMode === 'monster') ? 0.16 : 0.12; // meme slightly rarer wins
-      // bump probability for rare items (lower rarity value => rarer)
-      if(chosen.rarity <= 3) baseWinProb = (caseMode === 'monster') ? 0.55 : 0.35;    // very rare items: monster ~55%, meme ~35%
-      else if(chosen.rarity <= 8) baseWinProb = (caseMode === 'monster') ? 0.28 : 0.18; // uncommon
-      else if(chosen.mult3 >= 12) baseWinProb = (caseMode === 'monster') ? 0.22 : 0.14; // slightly better if mult3 is high
+      // base win probability — easier wins now
+      let baseWinProb = (caseMode === 'monster') ? 0.46 : 0.38; // monster wins ~46%, meme ~38%
+      // boost probability for rarer items (rarer items still more likely to yield a payout)
+      if(chosen.rarity <= 3) baseWinProb = (caseMode === 'monster') ? 0.72 : 0.56;    // very rare: monster ~72%, meme ~56%
+      else if(chosen.rarity <= 8) baseWinProb = (caseMode === 'monster') ? 0.54 : 0.42; // uncommon
+      else if(chosen.mult3 >= 12) baseWinProb = (caseMode === 'monster') ? 0.50 : 0.40;  // if mult3 is high
 
-      // tiny global rare-roll uplift chance (so every now and then meme also pays out bigger)
-      if(Math.random() < 0.005) baseWinProb = Math.min(0.95, baseWinProb + 0.18);
+      // tiny random uplift so occasionally you still get bigger surprises
+      if(Math.random() < 0.005) baseWinProb = Math.min(0.98, baseWinProb + 0.12);
 
       const roll = Math.random();
       if(roll > baseWinProb){
-        // treat as a loss: zero payout (you still see the visual drop)
+        // treat as a loss: zero payout (visual drop still shown)
         payout = 0;
       } else {
-        // it's a 'win' — but apply a dampening factor to keep wins modest and controlled
-        // Meme wins receive slightly lower keep factor on average to keep meme cases rare and small
+        // it's a 'win' — apply stronger dampening so wins are modest
         let keepFactor;
         if(caseMode === 'monster'){
-          keepFactor = 0.55 + Math.random()*0.35; // 0.55–0.9
+          // monster: wins happen more often, but keep a smaller slice
+          keepFactor = 0.25 + Math.random()*0.20; // 0.25–0.45
         } else {
-          keepFactor = 0.45 + Math.random()*0.35; // 0.45–0.8 (meme keeps are smaller on average)
+          // meme: slightly smaller keeps on average
+          keepFactor = 0.20 + Math.random()*0.20; // 0.20–0.40
         }
 
-        // adjust by rarity (commons keep less)
-        if(chosen.rarity > 20) keepFactor = (keepFactor * 0.85) - (Math.random()*0.2);
-        if(chosen.rarity > 60) keepFactor = (keepFactor * 0.65) - (Math.random()*0.15);
+        // commons keep less than uncommon/rare
+        if(chosen.rarity > 20) keepFactor = keepFactor * 0.85;
+        if(chosen.rarity > 60) keepFactor = keepFactor * 0.70;
 
-        // clamp to sensible bounds
-        keepFactor = Math.max(0.15, Math.min(0.95, keepFactor));
+        // clamp keep factor
+        keepFactor = Math.max(0.10, Math.min(0.60, keepFactor));
+
+        // apply keep factor
         payout = Math.round(payout * keepFactor * 100) / 100;
 
-        // Occasionally (small chance) shrink further to create many tiny wins
-        if(Math.random() < 0.12) payout = Math.round(payout * (0.18 + Math.random()*0.42) * 100) / 100;
+        // additional occasional shrink to create many small wins
+        if(Math.random() < 0.12) payout = Math.round(payout * (0.12 + Math.random()*0.38) * 100) / 100;
 
-        // Extra safeguard: if payout ends up equal to bet (or very tiny), make it slightly smaller to preserve house edge
-        if(payout <= bet * 0.05) payout = 0; // very tiny wins become losses to keep frequency low
+        // Prevent trivially tiny wins: if payout <= 5% of bet, turn to 0
+        if(payout <= bet * 0.05) payout = 0;
+
+        // HARD CAP: keep wins small relative to bet (change multiplier if you want larger cap)
+        const maxPayoutCap = Math.round(bet * 1.5 * 100) / 100; // cap at 1.5x the bet
+        if(payout > maxPayoutCap) payout = maxPayoutCap;
       }
     }
+
 
     // Visual & audio
     try { cameraShake(chosen.rarity <= 3 ? 12 : 6); } catch(e){}
