@@ -1,13 +1,8 @@
 # main.py
 """
-FastAPI leaderboard backend for Kenzies Fridge (updated).
-
-New features:
- - Register / Login endpoints (JSON-only user store)
- - Session tokens stored in the same JSON file
- - Optional S3 (or S3-compatible) persistence. Set S3 env vars to enable.
- - All user-scoped endpoints now use the authenticated username from the
-   registration/login session token. No user_id path parameters anywhere.
+FastAPI leaderboard backend for Kenzies Fridge (S3 removed).
+Uses a committed seed JSON (leaderboard.json next to main.py) to
+restore data/leaderboard.json on startup if missing. No env keys needed.
 """
 import os
 import json
@@ -25,30 +20,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Optional S3 support (recommended for persistent JSON across deploys)
-USE_S3 = False
-S3_BUCKET = os.environ.get("S3_BUCKET")  # REQUIRED if you'd like persistence across deploys
-S3_KEY = os.environ.get("S3_KEY", "leaderboard.json")
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.environ.get("AWS_REGION")
-S3_ENDPOINT = os.environ.get("S3_ENDPOINT")  # optional for S3-compatible (e.g. spaces/backblaze)
-
-if S3_BUCKET and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-    try:
-        import boto3
-        from botocore.exceptions import ClientError
-        USE_S3 = True
-        logger.info("S3 persistence enabled (will sync JSON to S3).")
-    except Exception as e:
-        USE_S3 = False
-        logger.warning(f"S3 credentials provided but boto3 import failed: {e}. Falling back to local storage.")
-else:
-    logger.info("S3 not configured. Using local JSON file only (may reset on platform deploys).")
+# ---- S3 removed: use local-seed approach ----
+# Path to the seed DB file that's committed into your repository.
+# Place a seed file named `leaderboard.json` next to main.py (project root).
+SEED_DB_PATH = os.path.join(os.path.dirname(__file__), "leaderboard.json")
 
 # default starting balance for new users
 START_BALANCE = 5000.0
@@ -78,59 +58,7 @@ def _prev_month_key(dt: Optional[datetime]=None) -> str:
     return prev_last.strftime("%Y-%m")
 
 # ---------------------------
-# S3 helpers (if enabled)
-# ---------------------------
-def s3_client():
-    if not USE_S3:
-        return None
-    # Create boto3 client with optional custom endpoint
-    if S3_ENDPOINT:
-        return boto3.client(
-            "s3",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION or "us-east-1",
-            endpoint_url=S3_ENDPOINT
-        )
-    else:
-        return boto3.client(
-            "s3",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION or "us-east-1",
-        )
-
-def download_db_from_s3():
-    if not USE_S3:
-        return False
-    client = s3_client()
-    try:
-        logger.info(f"Attempting to download {S3_KEY} from bucket {S3_BUCKET}")
-        tmp = DB_PATH + ".s3tmp"
-        client.download_file(S3_BUCKET, S3_KEY, tmp)
-        # move to DB_PATH
-        os.replace(tmp, DB_PATH)
-        logger.info("Downloaded DB from S3.")
-        return True
-    except Exception as e:
-        logger.info(f"No DB found in S3 or download failed: {e}")
-        return False
-
-def upload_db_to_s3():
-    if not USE_S3:
-        return False
-    client = s3_client()
-    try:
-        logger.info("Uploading DB to S3...")
-        client.upload_file(DB_PATH, S3_BUCKET, S3_KEY)
-        logger.info("Upload to S3 completed.")
-        return True
-    except Exception as e:
-        logger.warning(f"Failed to upload DB to S3: {e}")
-        return False
-
-# ---------------------------
-# File DB helpers (read/write)
+# File DB helpers (read/write) with seed fallback
 # ---------------------------
 def _default_db():
     return {
@@ -146,50 +74,64 @@ def _default_db():
     }
 
 def _read_db() -> Dict[str, Any]:
-    # If using S3 and file doesn't exist locally, try to download
-    if USE_S3 and not os.path.exists(DB_PATH):
-        # try downloading
-        download_db_from_s3()
+    """
+    Read DB from DATA_DIR. If missing, attempt to copy a committed seed file (SEED_DB_PATH)
+    into DB_PATH. If seed is missing or copy fails, create and return a default DB.
+    """
+    # If DB file doesn't exist, try to create it from the seed file committed with the repo.
     if not os.path.exists(DB_PATH):
-        default = _default_db()
-        # create file
-        with open(DB_PATH, "w", encoding="utf-8") as f:
-            json.dump(default, f, indent=2)
-        # If S3 enabled, upload initial
-        if USE_S3:
-            upload_db_to_s3()
-        return default
-    with open(DB_PATH, "r", encoding="utf-8") as f:
         try:
+            if os.path.exists(SEED_DB_PATH):
+                # ensure data dir exists
+                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+                shutil.copyfile(SEED_DB_PATH, DB_PATH)
+                logger.info(f"Copied seed DB from {SEED_DB_PATH} -> {DB_PATH}")
+                with open(DB_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    data.setdefault("auth", {"users": {}, "sessions": {}})
+                    return data
+        except Exception as e:
+            logger.warning(f"Failed to copy seed DB from {SEED_DB_PATH}: {e}")
+
+        # fallback: create a fresh default DB file
+        default = _default_db()
+        try:
+            with open(DB_PATH, "w", encoding="utf-8") as f:
+                json.dump(default, f, indent=2)
+            logger.info(f"Created new default DB at {DB_PATH}")
+        except Exception as e:
+            logger.warning(f"Failed to create DB file at {DB_PATH}: {e}")
+        return default
+
+    # if DB exists, load it
+    try:
+        with open(DB_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Ensure auth area exists (for older files)
-            if "auth" not in data:
-                data.setdefault("auth", {"users": {}, "sessions": {}})
+            data.setdefault("auth", {"users": {}, "sessions": {}})
             return data
-        except Exception:
-            # Corrupt file fallback
-            return _default_db()
+    except Exception as e:
+        logger.warning(f"Failed to read DB at {DB_PATH} ({e}), returning default DB")
+        return _default_db()
 
 def _write_db(data: Dict[str, Any]):
-    # write atomically
+    """
+    Atomically write DB to DB_PATH. No external uploads (no S3).
+    """
     tmp = DB_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
     try:
-        os.replace(tmp, DB_PATH)
-    except Exception:
-        # fallback
-        with open(DB_PATH, "w", encoding="utf-8") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-    # Upload to S3 if configured
-    if USE_S3:
+        os.replace(tmp, DB_PATH)
+    except Exception as e:
+        logger.warning(f"Atomic write failed ({e}), attempting fallback write")
         try:
-            upload_db_to_s3()
-        except Exception as e:
-            logger.warning(f"Failed to upload DB after write: {e}")
+            with open(DB_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        except Exception as e2:
+            logger.error(f"Failed to write DB to {DB_PATH}: {e2}")
 
 # ---------------------------
-# Leaderboard helper utilities (unchanged except username naming)
+# Leaderboard helper utilities
 # ---------------------------
 def compute_podium_snapshot(users: Dict[str, Any], top_n=3):
     arr = []
@@ -289,7 +231,7 @@ class TradeRecord(BaseModel):
 # ---------------------------
 # FastAPI app
 # ---------------------------
-app = FastAPI(title="Kenzies Fridge Leaderboard API (with auth & S3 persistence)")
+app = FastAPI(title="Kenzies Fridge Leaderboard API (local-seed)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -311,7 +253,7 @@ def root_index():
 @app.on_event("startup")
 def startup_info():
     index_path = os.path.join(STATIC_DIR, "index.html")
-    logger.info(f"Starting Kenzies Fridge API")
+    logger.info(f"Starting Kenzies Fridge API (local-seed mode)")
     logger.info(f"STATIC_DIR = {os.path.abspath(STATIC_DIR)}")
     logger.info(f"index.html exists: {os.path.exists(index_path)} -> {index_path}")
     try:
@@ -319,9 +261,9 @@ def startup_info():
         logger.info(f"static/*: {files[:30]}")
     except Exception as e:
         logger.info(f"Could not list static dir: {e}")
-    # Ensure DB exists; if S3 enabled, attempt download
+    # Ensure DB exists; if missing, _read_db will copy the seed file if present
     with _lock:
-        _read_db()  # this will download from S3 if configured
+        _read_db()
 
 @app.get("/_debug/static-files")
 def debug_static_files():
