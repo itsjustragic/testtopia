@@ -3009,7 +3009,7 @@ window.addEventListener('keydown', (e) => {
       const pool = (typeof buildCasePool === 'function') ? buildCasePool() : [];
       // players: user + 4 bots
       const players = [{ id:'user', name: (localStorage.getItem('kf_nickname') || 'You'), chosenName:null, value:0, previewImg:null, effective:0 }];
-      const BOT_NAMES = ['Rook','Fiz','Nova','Hexa'];
+      const BOT_NAMES = ['Rudy','Ruth','Kenzie','Alex'];
       for(let i=0;i<4;i++) players.push({ id:'bot', name: BOT_NAMES[i] || ('Bot'+(i+1)), chosenName:null, value:0, previewImg:null, effective:0 });
 
       // initial blank render
