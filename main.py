@@ -6,20 +6,15 @@ New features:
  - Register / Login endpoints (JSON-only user store)
  - Session tokens stored in the same JSON file
  - Optional S3 (or S3-compatible) persistence. Set S3 env vars to enable.
- - If S3 enabled, DB is loaded from S3 on startup and uploaded after writes,
-   preventing JSON resets on platform restarts/deploys (Render, etc).
-
-Install:
-    pip install fastapi uvicorn boto3
-
-Run (dev):
-    python -m uvicorn main:app --reload
+ - All user-scoped endpoints now use the authenticated username from the
+   registration/login session token. No user_id path parameters anywhere.
 """
 import os
 import json
 import threading
 import hashlib
 import hmac
+from fastapi import Body
 import secrets
 import time
 from datetime import datetime, timedelta
@@ -139,10 +134,10 @@ def upload_db_to_s3():
 # ---------------------------
 def _default_db():
     return {
-        "users": {},  # leaderboard users: userId -> { nickname, balance, last_update, trades, wins, period_start_balance }
+        "users": {},  # leaderboard users: username -> { nickname, balance, last_update, trades, wins, period_start_balance }
         "monthly_winners": {},  # "YYYY-MM" -> { "podium": [...], "closed_at": ISO }
         "last_month_closed": None,
-        "recent_trades": [],  # newest-first
+        "recent_trades": [],  # newest-first, each entry includes "username", "nickname", ...
         # auth area:
         "auth": {
             "users": {},  # username -> { salt, passhash, created_at, nickname_optional }
@@ -194,23 +189,23 @@ def _write_db(data: Dict[str, Any]):
             logger.warning(f"Failed to upload DB after write: {e}")
 
 # ---------------------------
-# Leaderboard helper utilities (unchanged)
+# Leaderboard helper utilities (unchanged except username naming)
 # ---------------------------
 def compute_podium_snapshot(users: Dict[str, Any], top_n=3):
     arr = []
-    for uid, u in users.items():
+    for uname, u in users.items():
         try:
             bal = float(u.get("balance", START_BALANCE))
         except Exception:
             bal = START_BALANCE
-        arr.append((uid, u.get("nickname", ""), bal))
+        arr.append((uname, u.get("nickname", ""), bal))
     arr.sort(key=lambda x: x[2], reverse=True)
     podium = []
     for i in range(min(top_n, len(arr))):
-        uid, nick, bal = arr[i]
+        uname, nick, bal = arr[i]
         podium.append({
             "position": i+1,
-            "user_id": uid,
+            "username": uname,
             "nickname": nick,
             "balance": round(bal, 2)
         })
@@ -367,7 +362,7 @@ def _cleanup_expired_sessions(db: Dict[str, Any]):
     sess = db.setdefault("auth", {}).setdefault("sessions", {})
     now = datetime.utcnow()
     to_delete = []
-    for token, info in sess.items():
+    for token, info in list(sess.items()):
         exp = info.get("expires_at")
         try:
             if exp and exp.endswith("Z"):
@@ -379,7 +374,8 @@ def _cleanup_expired_sessions(db: Dict[str, Any]):
         if exp_dt and exp_dt < now:
             to_delete.append(token)
     for t in to_delete:
-        del sess[t]
+        if t in sess:
+            del sess[t]
 
 def _get_db_and_user_from_token(authorization: Optional[str]) -> Optional[str]:
     # expects header "Bearer <token>"
@@ -472,8 +468,100 @@ def logout(authorization: Optional[str] = Header(None)):
     raise HTTPException(status_code=401, detail="invalid token")
 
 # ---------------------------
-# Existing leaderboard endpoints (slightly adapted to accept username strings as ids)
+# User-scoped endpoints (NO user_id in paths; use token username)
 # ---------------------------
+@app.post("/api/user/me/trade")
+def record_trade_me(tr: TradeRecord, username: str = Depends(get_current_username)):
+    # username is derived from the Bearer token via get_current_username
+    user_key = username
+    with _lock:
+        db = _read_db()
+        users = db.setdefault("users", {})
+        u = users.setdefault(user_key, {
+            "nickname": "",
+            "balance": START_BALANCE,
+            "last_update": None,
+            "trades": 0,
+            "wins": 0,
+            "period_start_balance": START_BALANCE
+        })
+
+        changed_nick = None
+        if tr.nickname is not None:
+            n = (tr.nickname or "").strip()[:40]
+            if n != u.get("nickname", ""):
+                changed_nick = n
+                u["nickname"] = n
+                recent = db.setdefault("recent_trades", [])
+                for ent in recent:
+                    try:
+                        if ent.get("username") == user_key:
+                            ent["nickname"] = changed_nick
+                    except Exception:
+                        pass
+
+        u.setdefault("trades", 0)
+        u.setdefault("wins", 0)
+        u.setdefault("period_start_balance", START_BALANCE)
+        u.setdefault("balance", START_BALANCE)
+
+        res = (tr.result or "").lower()
+        if res not in ("win", "lose"):
+            raise HTTPException(status_code=400, detail='result must be "win" or "lose"')
+
+        u["trades"] = int(u.get("trades", 0)) + 1
+        if res == "win":
+            u["wins"] = int(u.get("wins", 0)) + 1
+
+        amt = 0.0
+        if tr.amount is not None:
+            try:
+                amt = float(tr.amount)
+            except Exception:
+                amt = 0.0
+
+        if tr.amount is not None:
+            if res == "win":
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) + amt, 2)
+            else:
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) - amt, 2)
+
+        u["last_update"] = _now_iso()
+
+        trade_entry = {
+            "ts": u["last_update"],
+            "username": user_key,
+            "nickname": u.get("nickname", "") or "",
+            "result": res,
+            "amount": round(amt, 2)
+        }
+        recent = db.setdefault("recent_trades", [])
+        recent.insert(0, trade_entry)
+        MAX_RECENT_TRADES = 500
+        if len(recent) > MAX_RECENT_TRADES:
+            del recent[MAX_RECENT_TRADES:]
+
+        _write_db(db)
+
+        metrics = compute_user_metrics(u)
+
+    resp = {
+        "status": "ok",
+        "user": {
+            "username": user_key,
+            "nickname": u.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"],
+            "wins": metrics["wins"],
+            "period_start_balance": metrics["period_start_balance"],
+            "last_update": u.get("last_update")
+        }
+    }
+    if changed_nick:
+        resp["message"] = f"nickname set to {changed_nick}"
+    return resp
 
 @app.get("/api/leaderboard")
 def get_leaderboard(limit: int = 100):
@@ -481,10 +569,10 @@ def get_leaderboard(limit: int = 100):
         db = _read_db()
     users = db.get("users", {})
     arr = []
-    for uid, u in users.items():
+    for uname, u in users.items():
         metrics = compute_user_metrics(u)
         arr.append({
-            "user_id": uid,
+            "username": uname,
             "nickname": u.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
@@ -494,15 +582,15 @@ def get_leaderboard(limit: int = 100):
     arr.sort(key=lambda x: x["balance"], reverse=True)
     return {"leaderboard": arr[:max(0, min(limit, 1000))], "timestamp": _now_iso()}
 
-@app.get("/api/user/{user_id}")
-def get_user(user_id: str):
+@app.get("/api/user/me")
+def get_user_me(username: str = Depends(get_current_username)):
     with _lock:
         db = _read_db()
-    user = db.get("users", {}).get(user_id)
+    user = db.get("users", {}).get(username)
     if user:
         metrics = compute_user_metrics(user)
         return {
-            "user_id": user_id,
+            "username": username,
             "nickname": user.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
@@ -514,7 +602,7 @@ def get_user(user_id: str):
         }
     else:
         return {
-            "user_id": user_id,
+            "username": username,
             "nickname": "",
             "balance": round(START_BALANCE, 2),
             "performance": 0.0,
@@ -525,17 +613,14 @@ def get_user(user_id: str):
             "last_update": None
         }
 
-@app.post("/api/user/{user_id}")
-def update_user(user_id: str, upd: UserUpdate, username: str = Depends(get_current_username)):
-    # Note: update_user now requires a valid token (only owner can update their record).
-    # If you want open update, remove the dependency.
-    if username != user_id:
-        # Only allow users to update their own user_id record by default
-        raise HTTPException(status_code=403, detail="You can only update your own user record")
+@app.post("/api/user/me")
+def update_user_me(upd: UserUpdate, username: str = Depends(get_current_username)):
+    # Only the authenticated user can update their record; username comes from token.
+    user_key = username
     with _lock:
         db = _read_db()
         users = db.setdefault("users", {})
-        u = users.setdefault(user_id, {
+        u = users.setdefault(user_key, {
             "nickname": "",
             "balance": START_BALANCE,
             "last_update": None,
@@ -581,7 +666,7 @@ def update_user(user_id: str, upd: UserUpdate, username: str = Depends(get_curre
             recent = db.setdefault("recent_trades", [])
             for ent in recent:
                 try:
-                    if ent.get("user_id") == user_id:
+                    if ent.get("username") == user_key:
                         ent["nickname"] = changed_nick
                 except Exception:
                     pass
@@ -592,7 +677,7 @@ def update_user(user_id: str, upd: UserUpdate, username: str = Depends(get_curre
     resp = {
         "status": "ok",
         "user": {
-            "user_id": user_id,
+            "username": user_key,
             "nickname": u.get("nickname", "") or "",
             "balance": metrics["balance"],
             "performance": metrics["performance"],
@@ -607,99 +692,7 @@ def update_user(user_id: str, upd: UserUpdate, username: str = Depends(get_curre
         resp["message"] = f"nickname set to {changed_nick}"
     return resp
 
-@app.post("/api/user/{user_id}/trade")
-def record_trade(user_id: str, tr: TradeRecord, username: str = Depends(get_current_username)):
-    # Only the owner can record trades for themselves by default
-    if username != user_id:
-        raise HTTPException(status_code=403, detail="You can only record trades for your own account")
-    with _lock:
-        db = _read_db()
-        users = db.setdefault("users", {})
-        u = users.setdefault(user_id, {
-            "nickname": "",
-            "balance": START_BALANCE,
-            "last_update": None,
-            "trades": 0,
-            "wins": 0,
-            "period_start_balance": START_BALANCE
-        })
-
-        changed_nick = None
-        if tr.nickname is not None:
-            n = (tr.nickname or "").strip()[:40]
-            if n != u.get("nickname", ""):
-                changed_nick = n
-                u["nickname"] = n
-                recent = db.setdefault("recent_trades", [])
-                for ent in recent:
-                    try:
-                        if ent.get("user_id") == user_id:
-                            ent["nickname"] = changed_nick
-                    except Exception:
-                        pass
-
-        u.setdefault("trades", 0)
-        u.setdefault("wins", 0)
-        u.setdefault("period_start_balance", START_BALANCE)
-        u.setdefault("balance", START_BALANCE)
-
-        res = tr.result.lower()
-        if res not in ("win", "lose"):
-            raise HTTPException(status_code=400, detail='result must be "win" or "lose"')
-
-        u["trades"] = int(u.get("trades", 0)) + 1
-        if res == "win":
-            u["wins"] = int(u.get("wins", 0)) + 1
-
-        amt = 0.0
-        if tr.amount is not None:
-            try:
-                amt = float(tr.amount)
-            except Exception:
-                amt = 0.0
-
-        if tr.amount is not None:
-            if res == "win":
-                u["balance"] = round(float(u.get("balance", START_BALANCE)) + amt, 2)
-            else:
-                u["balance"] = round(float(u.get("balance", START_BALANCE)) - amt, 2)
-
-        u["last_update"] = _now_iso()
-
-        trade_entry = {
-            "ts": u["last_update"],
-            "user_id": user_id,
-            "nickname": u.get("nickname", "") or "",
-            "result": res,
-            "amount": round(amt, 2)
-        }
-        recent = db.setdefault("recent_trades", [])
-        recent.insert(0, trade_entry)
-        MAX_RECENT_TRADES = 500
-        if len(recent) > MAX_RECENT_TRADES:
-            del recent[MAX_RECENT_TRADES:]
-
-        _write_db(db)
-
-        metrics = compute_user_metrics(u)
-
-    resp = {
-        "status": "ok",
-        "user": {
-            "user_id": user_id,
-            "nickname": u.get("nickname", "") or "",
-            "balance": metrics["balance"],
-            "performance": metrics["performance"],
-            "win_rate": metrics["win_rate"],
-            "trades_this_period": metrics["trades_this_period"],
-            "wins": metrics["wins"],
-            "period_start_balance": metrics["period_start_balance"],
-            "last_update": u.get("last_update")
-        }
-    }
-    if changed_nick:
-        resp["message"] = f"nickname set to {changed_nick}"
-    return resp
+# Removed any /api/user/{user_id}/trade style endpoints — /api/user/me/trade is authoritative.
 
 @app.get("/api/live-wins")
 def get_live_wins(limit: int = 100, minutes: Optional[int] = None, nickname: Optional[str] = None):
@@ -778,7 +771,7 @@ def post_close_month():
         # === reset every user's balance to START_BALANCE for new period ===
         users = db.get("users", {})
         now_iso = _now_iso()
-        for uid, u in users.items():
+        for uname, u in users.items():
             try:
                 u["balance"] = round(float(START_BALANCE), 2)
             except Exception:
@@ -812,3 +805,99 @@ def get_latest_winners():
         return {"latest": None, "monthly_winners": {}}
     last_month = sorted(mw.keys())[-1]
     return {"latest": last_month, "winners": mw[last_month], "monthly_winners": mw}
+
+@app.post("/api/user/{user_key}/trade")
+def record_trade_by_key(user_key: str, tr: TradeRecord = Body(...), authorization: Optional[str] = Header(None)):
+    # If token present, it must match the path username (prevent impersonation).
+    auth_username = _get_db_and_user_from_token(authorization)
+    if auth_username and auth_username != user_key:
+        raise HTTPException(status_code=403, detail="token does not match username")
+
+    user_key = user_key or 'guest'
+    with _lock:
+        db = _read_db()
+        users = db.setdefault("users", {})
+        u = users.setdefault(user_key, {
+            "nickname": "",
+            "balance": START_BALANCE,
+            "last_update": None,
+            "trades": 0,
+            "wins": 0,
+            "period_start_balance": START_BALANCE
+        })
+
+        changed_nick = None
+        if tr.nickname is not None:
+            n = (tr.nickname or "").strip()[:40]
+            if n != u.get("nickname", ""):
+                changed_nick = n
+                u["nickname"] = n
+                recent = db.setdefault("recent_trades", [])
+                for ent in recent:
+                    try:
+                        if ent.get("username") == user_key:
+                            ent["nickname"] = changed_nick
+                    except Exception:
+                        pass
+
+        u.setdefault("trades", 0)
+        u.setdefault("wins", 0)
+        u.setdefault("period_start_balance", START_BALANCE)
+        u.setdefault("balance", START_BALANCE)
+
+        res = (tr.result or "").lower()
+        if res not in ("win", "lose"):
+            raise HTTPException(status_code=400, detail='result must be "win" or "lose"')
+
+        u["trades"] = int(u.get("trades", 0)) + 1
+        if res == "win":
+            u["wins"] = int(u.get("wins", 0)) + 1
+
+        amt = 0.0
+        if tr.amount is not None:
+            try:
+                amt = float(tr.amount)
+            except Exception:
+                amt = 0.0
+
+        if tr.amount is not None:
+            if res == "win":
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) + amt, 2)
+            else:
+                u["balance"] = round(float(u.get("balance", START_BALANCE)) - amt, 2)
+
+        u["last_update"] = _now_iso()
+
+        trade_entry = {
+            "ts": u["last_update"],
+            "username": user_key,
+            "nickname": u.get("nickname", "") or "",
+            "result": res,
+            "amount": round(amt, 2)
+        }
+        recent = db.setdefault("recent_trades", [])
+        recent.insert(0, trade_entry)
+        MAX_RECENT_TRADES = 500
+        if len(recent) > MAX_RECENT_TRADES:
+            del recent[MAX_RECENT_TRADES:]
+
+        _write_db(db)
+        metrics = compute_user_metrics(u)
+
+    resp = {
+        "status": "ok",
+        "user": {
+            "username": user_key,
+            "nickname": u.get("nickname", "") or "",
+            "balance": metrics["balance"],
+            "performance": metrics["performance"],
+            "win_rate": metrics["win_rate"],
+            "trades_this_period": metrics["trades_this_period"],
+            "wins": metrics["wins"],
+            "period_start_balance": metrics["period_start_balance"],
+            "last_update": u.get("last_update")
+        }
+    }
+    if changed_nick:
+        resp["message"] = f"nickname set to {changed_nick}"
+    return resp
