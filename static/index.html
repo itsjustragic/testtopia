@@ -3905,6 +3905,76 @@ document.addEventListener('DOMContentLoaded', function(){
   window.__kf_showLeaderboard = () => showLbModal(true);
 });
 </script>
+<script>
+/* Unified Rainbet modal wiring — paste this once at the end of <body> */
+(function(){
+  // run after DOM ready
+  function ready(fn){
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  }
+
+  ready(function(){
+    const rainBtn = document.getElementById('rainbetBtn');
+    const rainModal = document.getElementById('rainbetModal');
+    const rainClose = document.getElementById('rainCloseBtn');
+
+    if(!rainBtn || !rainModal){
+      console.warn('rain: missing elements', { rainBtn: !!rainBtn, rainModal: !!rainModal });
+      return;
+    }
+
+    // helper open/close
+    function openRain(){
+      // defensively remove duplicates
+      try { rainModal.classList.add('active'); } catch(e){ /* ignore */ }
+      rainModal.style.display = 'flex';
+      rainModal.setAttribute('aria-hidden', 'false');
+      // optional: prevent body scroll while modal open
+      document.documentElement.style.overflow = 'hidden';
+    }
+    function closeRain(){
+      rainModal.classList.remove('active');
+      rainModal.style.display = 'none';
+      rainModal.setAttribute('aria-hidden', 'true');
+      document.documentElement.style.overflow = '';
+    }
+
+    // remove previously-attached helper handlers if present
+    try {
+      if (rainBtn._kf_rain_handler) rainBtn.removeEventListener('click', rainBtn._kf_rain_handler);
+    } catch(e){}
+
+    const handler = function(ev){
+      try{ ev && ev.preventDefault && ev.preventDefault(); }catch(e){}
+      openRain();
+    };
+    rainBtn.addEventListener('click', handler);
+    rainBtn._kf_rain_handler = handler;
+
+    // close button
+    if(rainClose){
+      try { if(rainClose._kf_rain_close) rainClose.removeEventListener('click', rainClose._kf_rain_close); } catch(e){}
+      const ch = function(ev){ ev && ev.preventDefault && ev.preventDefault(); closeRain(); };
+      rainClose.addEventListener('click', ch);
+      rainClose._kf_rain_close = ch;
+    }
+
+    // backdrop click
+    rainModal.addEventListener('click', function(ev){
+      if(ev.target === rainModal) closeRain();
+    });
+
+    // Escape key
+    document.addEventListener('keydown', function(ev){
+      if(ev.key === 'Escape' && rainModal.classList.contains('active')) closeRain();
+    });
+
+    // ensure initial state
+    if(!rainModal.classList.contains('active')) rainModal.setAttribute('aria-hidden','true');
+  });
+})();
+</script>
 
 </body>
 </html>
