@@ -680,6 +680,43 @@ input[type=number]{background:transparent;border:1px solid rgba(255,255,255,0.04
 
 </style>
 
+<!-- AUTH MODAL: register / login (nickname used as username) -->
+<div id="kf-auth-modal" class="modal-overlay" aria-hidden="true" style="display:none">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="kf-auth-title">
+    <h3 id="kf-auth-title" style="color:var(--accent-green);margin:0 0 8px 0">Welcome — sign in or register</h3>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button id="auth-tab-login" class="small" type="button">Login</button>
+      <button id="auth-tab-register" class="small" type="button">Register</button>
+    </div>
+
+    <div id="auth-forms">
+      <!-- Register form -->
+      <div id="auth-register" style="display:none">
+        <label class="muted">Nickname (this will be your username)</label>
+        <input id="reg-nick" type="text" maxlength="40" placeholder="e.g. Shawty" style="width:100%;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);margin-top:6px">
+        <label class="muted" style="margin-top:8px">Password</label>
+        <input id="reg-pass" type="password" placeholder="Choose a password (min 6)" style="width:100%;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);margin-top:6px">
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button id="reg-btn" class="btn" type="button">Register &amp; Login</button>
+        </div>
+      </div>
+
+      <!-- Login form -->
+      <div id="auth-login" style="display:none">
+        <label class="muted">Nickname</label>
+        <input id="login-nick" type="text" maxlength="40" placeholder="Your nickname" style="width:100%;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);margin-top:6px">
+        <label class="muted" style="margin-top:8px">Password</label>
+        <input id="login-pass" type="password" placeholder="Your password" style="width:100%;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);margin-top:6px">
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button id="login-btn" class="btn" type="button">Login</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- Live Wins Box (fixed middle-right) -->
 <style>
 /* Hide live wins box on touch devices / small screens (mobile & iPad) */
@@ -819,6 +856,496 @@ input[type=number]{background:transparent;border:1px solid rgba(255,255,255,0.04
 
 <!-- Toast container -->
 <div id="kf-toast" aria-hidden="true"></div>
+
+<script>
+(function(){
+  const API_BASE = '/api';
+  const authModal = document.getElementById('kf-auth-modal');
+  const authTabLogin = document.getElementById('auth-tab-login');
+  const authTabRegister = document.getElementById('auth-tab-register');
+  const authRegister = document.getElementById('auth-register');
+  const authLogin = document.getElementById('auth-login');
+  const regNick = document.getElementById('reg-nick');
+  const regPass = document.getElementById('reg-pass');
+  const regBtn = document.getElementById('reg-btn');
+  const loginNick = document.getElementById('login-nick');
+  const loginPass = document.getElementById('login-pass');
+  const loginBtn = document.getElementById('login-btn');
+
+  // Rainbet elements
+  const rainbetBtn = document.getElementById('rainbetBtn');
+  const rainModal = document.getElementById('rainbetModal');
+  const rainCloseBtn = document.getElementById('rainCloseBtn');
+
+  function showAuthModal(show, defaultTab='register'){
+    if(show){
+      authModal.style.display = 'flex';
+      authModal.classList.add('active');
+      authModal.setAttribute('aria-hidden','false');
+      (defaultTab === 'login') ? switchToLogin() : switchToRegister();
+    } else {
+      authModal.classList.remove('active');
+      authModal.style.display = 'none';
+      authModal.setAttribute('aria-hidden','true');
+    }
+  }
+  function switchToLogin(){
+    authRegister.style.display = 'none';
+    authLogin.style.display = 'block';
+    authTabLogin.classList.add('active');
+    authTabRegister.classList.remove('active');
+  }
+  function switchToRegister(){
+    authRegister.style.display = 'block';
+    authLogin.style.display = 'none';
+    authTabRegister.classList.add('active');
+    authTabLogin.classList.remove('active');
+  }
+
+  authTabLogin.addEventListener('click', switchToLogin);
+  authTabRegister.addEventListener('click', switchToRegister);
+
+  function toast(msg){
+    try{ if(typeof showToast === 'function'){ showToast(msg); return; } }catch(e){}
+    alert(msg);
+  }
+
+  async function postJson(path, body, token){
+    const headers = {'content-type':'application/json'};
+    if(token) headers['Authorization'] = 'Bearer ' + token;
+    const r = await fetch(API_BASE + path, { method:'POST', headers, body: JSON.stringify(body) });
+    const json = await r.json().catch(()=>null);
+    if(!r.ok) throw new Error(json && json.detail ? json.detail : ('HTTP ' + r.status));
+    return json;
+  }
+
+  async function loginFlow(username, password){
+    try{
+      const res = await postJson('/login', { username, password });
+      if(res && res.token){
+        localStorage.setItem('kf_token', res.token);
+        localStorage.setItem('kf_user_id', username);
+        localStorage.setItem('kf_nickname', username);
+        // Sync user record on server (non-blocking)
+        try{
+          const bal = Number(localStorage.getItem('kf_balance') || document.getElementById('balance').textContent || 0) || 0;
+          await postJson(`/user/${encodeURIComponent(username)}`, { nickname: username, balance: bal }, res.token);
+        }catch(e){}
+        showAuthModal(false);
+        toast('Signed in as ' + username);
+        try{ if(typeof refreshAll === 'function') refreshAll(); }catch(e){}
+        return true;
+      } else {
+        toast('Login failed');
+        return false;
+      }
+    }catch(err){
+      toast('Login error: ' + (err.message || err));
+      return false;
+    }
+  }
+
+  async function registerFlow(username, password){
+    try{
+      const res = await postJson('/register', { username, password, nickname: username });
+      if(res && res.token){
+        localStorage.setItem('kf_token', res.token);
+        localStorage.setItem('kf_user_id', username);
+        localStorage.setItem('kf_nickname', username);
+        try{
+          const bal = Number(localStorage.getItem('kf_balance') || document.getElementById('balance').textContent || 0) || 0;
+          await postJson(`/user/${encodeURIComponent(username)}`, { nickname: username, balance: bal }, res.token);
+        }catch(e){}
+        showAuthModal(false);
+        toast('Registered & signed in as ' + username);
+        try{ if(typeof refreshAll === 'function') refreshAll(); }catch(e){}
+        return true;
+      } else {
+        toast('Register failed');
+        return false;
+      }
+    }catch(err){
+      toast('Register error: ' + (err.message || err));
+      return false;
+    }
+  }
+
+  regBtn.addEventListener('click', async function(){
+    const nick = (regNick.value || '').trim().slice(0,40);
+    const pass = String(regPass.value || '');
+    if(!nick) return toast('Enter a nickname');
+    if(!pass || pass.length < 6) return toast('Password must be >= 6 chars');
+    regBtn.disabled = true;
+    try { await registerFlow(nick, pass); } finally { regBtn.disabled = false; }
+  });
+
+  loginBtn.addEventListener('click', async function(){
+    const nick = (loginNick.value || '').trim().slice(0,40);
+    const pass = String(loginPass.value || '');
+    if(!nick) return toast('Enter your nickname');
+    if(!pass) return toast('Enter your password');
+    loginBtn.disabled = true;
+    try { await loginFlow(nick, pass); } finally { loginBtn.disabled = false; }
+  });
+
+  // Show modal on load if no token/user_id found
+  document.addEventListener('DOMContentLoaded', function(){
+    const token = localStorage.getItem('kf_token');
+    const uid = localStorage.getItem('kf_user_id');
+    if(!token || !uid){
+      // force register tab by default (user can switch to login)
+      showAuthModal(true, 'register');
+      const nick = localStorage.getItem('kf_nickname') || '';
+      if(nick){ regNick.value = nick; loginNick.value = nick; }
+    } else {
+      // ensure nickname exists locally
+      const nick = localStorage.getItem('kf_nickname') || uid;
+      if(nick) localStorage.setItem('kf_nickname', nick);
+    }
+
+    // Fixed rainbet button wiring
+    if(rainbetBtn && rainModal){
+      rainbetBtn.addEventListener('click', function(e){
+        e && e.preventDefault && e.preventDefault();
+        try {
+          rainModal.style.display = 'flex';
+          rainModal.classList.add('active');
+          rainModal.setAttribute('aria-hidden','false');
+        } catch(err){ console.warn('rain open failed', err); }
+      });
+    }
+    if(rainCloseBtn && rainModal){
+      rainCloseBtn.addEventListener('click', function(){
+        try {
+          rainModal.classList.remove('active');
+          rainModal.style.display = 'none';
+          rainModal.setAttribute('aria-hidden','true');
+        } catch(err){ console.warn('rain close failed', err); }
+      });
+    }
+    try {
+      if(rainModal){
+        rainModal.addEventListener('click', function(ev){ if(ev.target === rainModal){ rainModal.classList.remove('active'); rainModal.style.display = 'none'; rainModal.setAttribute('aria-hidden','true'); }});
+        document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape'){ if(rainModal.classList.contains('active')){ rainModal.classList.remove('active'); rainModal.style.display = 'none'; rainModal.setAttribute('aria-hidden','true'); } }});
+      }
+    } catch(e){}
+  }, { once: true });
+
+})();
+</script>
+
+<script>
+/* Auth UI logic: register/login + fetch patching
+   - Uses /api/register & /api/login
+   - Stores token in localStorage.kf_token
+   - Patches window.fetch to add Authorization for same-origin /api/* calls
+   - Updates UI (kf-auth-status) and localStorage.kf_user_id / kf_nickname
+*/
+
+(function(){
+  // elements
+  const openBtn = document.getElementById('kf-open-auth');
+  const modal = document.getElementById('kf-auth-modal');
+  const closeBtn = document.getElementById('kf-auth-close');
+  const tabReg = document.getElementById('kf-tab-register');
+  const tabLogin = document.getElementById('kf-tab-login');
+  const regDiv = document.getElementById('kf-register');
+  const loginDiv = document.getElementById('kf-login');
+
+  const regNick = document.getElementById('kf-reg-nick');
+  const regPass = document.getElementById('kf-reg-pass');
+  const regPass2 = document.getElementById('kf-reg-pass2');
+  const regBtn = document.getElementById('kf-reg-btn');
+  const regMsg = document.getElementById('kf-reg-msg');
+
+  const loginNick = document.getElementById('kf-login-nick');
+  const loginPass = document.getElementById('kf-login-pass');
+  const loginBtn = document.getElementById('kf-login-btn');
+  const loginMsg = document.getElementById('kf-login-msg');
+
+  const authArea = document.getElementById('kf-auth-area');
+  const authStatus = document.getElementById('kf-auth-status');
+  const authName = document.getElementById('kf-auth-name');
+  const logoutBtn = document.getElementById('kf-logout-btn');
+
+  const API_BASE = '/api';
+
+  function showModal(show){
+    if(show){
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden','false');
+    } else {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden','true');
+    }
+  }
+
+  function switchTo(tab){
+    if(tab === 'register'){
+      regDiv.style.display = 'block';
+      loginDiv.style.display = 'none';
+      tabReg.classList.add('active');
+      tabLogin.classList.remove('active');
+    } else {
+      regDiv.style.display = 'none';
+      loginDiv.style.display = 'block';
+      tabReg.classList.remove('active');
+      tabLogin.classList.add('active');
+    }
+  }
+
+  // simple helper to show messages
+  function setMsg(el, txt, isError){
+    el.textContent = txt || '';
+    el.style.color = isError ? '#ff6b6b' : 'var(--muted)';
+  }
+
+  // patch fetch to attach Authorization: Bearer <token> for same-origin /api/* calls
+  (function patchFetch(){
+    if(window.__kf_fetch_patched) return;
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async function(input, init){
+      try{
+        let url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+        // if relative path or same origin and path starts with /api
+        const isApi = typeof url === 'string' && (url.startsWith('/api') || url.indexOf(window.location.origin + '/api') === 0);
+        if(isApi){
+          init = init || {};
+          init.headers = new Headers(init.headers || {});
+          const token = localStorage.getItem('kf_token');
+          if(token){
+            init.headers.set('Authorization', 'Bearer ' + token);
+          }
+        }
+        return await origFetch(input, init);
+      }catch(e){
+        return origFetch(input, init);
+      }
+    };
+    window.__kf_fetch_patched = true;
+  })();
+
+  // helper: after login/register, store state and refresh UI + fetch server user
+  async function authSuccess(username, token, nickname){
+    try{
+      if(token) localStorage.setItem('kf_token', token);
+      if(username) localStorage.setItem('kf_user_id', username);
+      if(nickname) localStorage.setItem('kf_nickname', nickname);
+      // update header UI
+      updateAuthUI();
+      // fetch server user record and set client balance if available
+      try{
+        const r = await fetch(`${API_BASE}/user/${encodeURIComponent(username)}`);
+        if(r && r.ok){
+          const json = await r.json();
+          if(json && typeof json.balance !== 'undefined'){
+            try{
+              if(typeof window.setBalance === 'function') window.setBalance(Number(json.balance));
+              else document.getElementById('balance').textContent = Number(json.balance).toFixed(2);
+            }catch(e){}
+          }
+        }
+      }catch(e){}
+      showToast && typeof showToast === 'function' && showToast(`Logged in as ${nickname || username}`);
+      // close modal
+      showModal(false);
+    }catch(e){
+      console.warn('authSuccess err', e);
+    }
+  }
+
+  function updateAuthUI(){
+    const username = localStorage.getItem('kf_user_id');
+    const nick = localStorage.getItem('kf_nickname') || username || '';
+    if(username && localStorage.getItem('kf_token')){
+      authStatus.style.display = 'flex';
+      authName.textContent = nick;
+      openBtn.style.display = 'none';
+      // keep small Account button hidden if logged in
+    } else {
+      authStatus.style.display = 'none';
+      openBtn.style.display = 'inline-block';
+    }
+  }
+
+  // Register flow
+  regBtn.addEventListener('click', async ()=>{
+    setMsg(regMsg, '');
+    const nick = (regNick.value || '').trim().slice(0,40);
+    const pass = regPass.value || '';
+    const pass2 = regPass2.value || '';
+    if(!nick) return setMsg(regMsg, 'Enter a nickname', true);
+    if(!pass || pass.length < 6) return setMsg(regMsg, 'Password must be >= 6 chars', true);
+    if(pass !== pass2) return setMsg(regMsg, 'Passwords do not match', true);
+    regBtn.disabled = true;
+    try{
+      const body = { username: nick, password: pass, nickname: nick };
+      const r = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const js = await r.json().catch(()=>null);
+      if(!r.ok){
+        const d = (js && (js.detail || js.message)) || `Register failed (${r.status})`;
+        setMsg(regMsg, d, true);
+      } else {
+        const token = js && js.token;
+        const username = js && js.username ? js.username : nick;
+        await authSuccess(username, token, nick);
+      }
+    }catch(e){
+      setMsg(regMsg, 'Register error', true);
+      console.warn(e);
+    } finally { regBtn.disabled = false; }
+  });
+
+  // Login flow
+  loginBtn.addEventListener('click', async ()=>{
+    setMsg(loginMsg, '');
+    const nick = (loginNick.value || '').trim().slice(0,40);
+    const pass = loginPass.value || '';
+    if(!nick) return setMsg(loginMsg, 'Enter nickname', true);
+    if(!pass) return setMsg(loginMsg, 'Enter password', true);
+    loginBtn.disabled = true;
+    try{
+      const body = { username: nick, password: pass };
+      const r = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const js = await r.json().catch(()=>null);
+      if(!r.ok){
+        const d = (js && (js.detail || js.message)) || `Login failed (${r.status})`;
+        setMsg(loginMsg, d, true);
+      } else {
+        const token = js && js.token;
+        const username = js && js.username ? js.username : nick;
+        await authSuccess(username, token, js.username || nick);
+      }
+    }catch(e){
+      setMsg(loginMsg, 'Login error', true);
+      console.warn(e);
+    } finally { loginBtn.disabled = false; }
+  });
+
+  // Logout
+  async function logout(){
+    try{
+      const token = localStorage.getItem('kf_token');
+      if(token){
+        try{
+          await fetch(`${API_BASE}/logout`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+        }catch(e){}
+      }
+    }catch(e){}
+    localStorage.removeItem('kf_token');
+    // keep local kf_nickname and kf_balance but remove kf_user_id if you want - we'll remove both to be clean
+    localStorage.removeItem('kf_user_id');
+    // keep nickname? remove to force re-pick; here we remove
+    localStorage.removeItem('kf_nickname');
+    updateAuthUI();
+    showToast && typeof showToast === 'function' && showToast('Logged out');
+    // reload live leaderboard UI to reflect logged-out state
+    try { refreshAll && typeof refreshAll === 'function' && refreshAll(); } catch(e){}
+  }
+
+  logoutBtn.addEventListener('click', ()=> logout());
+  window.kfAuthLogout = logout;
+
+  // open/close and tabs
+  openBtn.addEventListener('click', ()=> { switchTo('login'); showModal(true); });
+  closeBtn.addEventListener('click', ()=> showModal(false));
+  tabReg.addEventListener('click', ()=> switchTo('register'));
+  tabLogin.addEventListener('click', ()=> switchTo('login'));
+
+  // keyboard: Esc close
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && modal.classList.contains('active')) showModal(false);
+  });
+
+  // init: prefer login tab, but show register if no nickname stored
+  (function init(){
+    const nick = localStorage.getItem('kf_nickname');
+    const uid = localStorage.getItem('kf_user_id');
+    const token = localStorage.getItem('kf_token');
+    if(!nick && !uid){
+      // no saved nick — show register modal on first open? just switch to register by default
+      switchTo('register');
+    } else {
+      switchTo('login');
+    }
+    // populate fields if available
+    if(localStorage.getItem('kf_nickname')) regNick.value = localStorage.getItem('kf_nickname');
+    if(localStorage.getItem('kf_nickname')) loginNick.value = localStorage.getItem('kf_nickname');
+
+    // wire fetch headers already patched above
+    updateAuthUI();
+  })();
+
+// -----------------------------
+(function(){
+  const rainBtn = document.getElementById('rainbetBtn');
+  const rainModal = document.getElementById('rainbetModal');
+  const rainClose = document.getElementById('rainCloseBtn');
+
+  if(!rainModal) return;
+
+  function openRainModal(){
+    rainModal.style.display = 'flex';
+    rainModal.classList.add('active');
+    rainModal.setAttribute('aria-hidden','false');
+    // focus the modal content for accessibility if possible
+    const inner = rainModal.querySelector('.rain-modal');
+    try { if(inner && typeof inner.focus === 'function') inner.focus(); } catch(e){}
+  }
+
+  function closeRainModal(){
+    rainModal.classList.remove('active');
+    // allow CSS transition to finish (if any) — hide immediately for simplicity
+    rainModal.style.display = 'none';
+    rainModal.setAttribute('aria-hidden','true');
+  }
+
+  // button -> open
+  if(rainBtn){
+    // remove any stray old handlers we might have attached previously
+    try { rainBtn.removeEventListener('click', rainBtn._kf_rain_handler); } catch(e){}
+    const _h = function(e){ if(e && e.preventDefault) e.preventDefault(); openRainModal(); };
+    rainBtn.addEventListener('click', _h);
+    rainBtn._kf_rain_handler = _h;
+  }
+
+  // close button -> close
+  if(rainClose){
+    try { rainClose.removeEventListener('click', rainClose._kf_rain_close); } catch(e){}
+    const _ch = function(e){ if(e && e.preventDefault) e.preventDefault(); closeRainModal(); };
+    rainClose.addEventListener('click', _ch);
+    rainClose._kf_rain_close = _ch;
+  }
+
+  // backdrop click -> close (click outside modal)
+  rainModal.addEventListener('click', function(e){
+    if(e.target === rainModal) closeRainModal();
+  });
+
+  // Esc key -> close
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && rainModal.classList.contains('active')) closeRainModal();
+  });
+
+  // defensive: ensure aria-hidden initial state
+  if(!rainModal.classList.contains('active')) rainModal.setAttribute('aria-hidden','true');
+
+})();
+
+
+
+
+</script>
 
 <!-- Memes & main script -->
 <script>
