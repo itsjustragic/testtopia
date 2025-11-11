@@ -1,28 +1,30 @@
 # main.py
 """
-FastAPI leaderboard backend for Kenzies Fridge.
+FastAPI leaderboard backend for Kenzies Fridge (updated).
 
-Usage:
-    pip install fastapi uvicorn
+New features:
+ - Register / Login endpoints (JSON-only user store)
+ - Session tokens stored in the same JSON file
+ - Optional S3 (or S3-compatible) persistence. Set S3 env vars to enable.
+ - If S3 enabled, DB is loaded from S3 on startup and uploaded after writes,
+   preventing JSON resets on platform restarts/deploys (Render, etc).
+
+Install:
+    pip install fastapi uvicorn boto3
+
+Run (dev):
     python -m uvicorn main:app --reload
-
-Serves:
- - GET  /api/leaderboard?limit=100
- - GET  /api/user/{user_id}
- - POST /api/user/{user_id}        body: {"nickname": "...", "balance": 123.45, "trades":0, "wins":0, "period_start_balance":5000}
- - POST /api/user/{user_id}/trade body: {"result":"win"|"lose", "amount": 12.34, "nickname":"..."}  (records a trade and optionally updates nickname)
- - POST /api/close_month
- - GET  /api/winners/{month}
- - GET  /api/winners
-Additionally serves static files from ./static/
-Data stored in ./data/leaderboard.json
 """
 import os
 import json
 import threading
+import hashlib
+import hmac
+import secrets
+import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException
+from typing import Optional, Dict, Any, List
+from fastapi import FastAPI, HTTPException, Header, Depends, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +32,28 @@ from pydantic import BaseModel, Field
 import logging
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
+# Optional S3 support (recommended for persistent JSON across deploys)
+USE_S3 = False
+S3_BUCKET = os.environ.get("S3_BUCKET")  # REQUIRED if you'd like persistence across deploys
+S3_KEY = os.environ.get("S3_KEY", "leaderboard.json")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION")
+S3_ENDPOINT = os.environ.get("S3_ENDPOINT")  # optional for S3-compatible (e.g. spaces/backblaze)
+
+if S3_BUCKET and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+        USE_S3 = True
+        logger.info("S3 persistence enabled (will sync JSON to S3).")
+    except Exception as e:
+        USE_S3 = False
+        logger.warning(f"S3 credentials provided but boto3 import failed: {e}. Falling back to local storage.")
+else:
+    logger.info("S3 not configured. Using local JSON file only (may reset on platform deploys).")
 
 # default starting balance for new users
 START_BALANCE = 5000.0
@@ -40,37 +63,117 @@ DB_PATH = os.path.join(DATA_DIR, "leaderboard.json")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+    os.makedirs(DATA_DIR, exist_ok=True)
 if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR)
+    os.makedirs(STATIC_DIR, exist_ok=True)
 
 _lock = threading.Lock()
 
 def _now_iso():
     return datetime.utcnow().isoformat() + "Z"
 
-def _read_db() -> Dict[str, Any]:
-    if not os.path.exists(DB_PATH):
-        default = {
-            "users": {},  # userId -> { nickname, balance, last_update, trades, wins, period_start_balance }
-            "monthly_winners": {},  # "YYYY-MM" -> { "podium": [...], "closed_at": ISO }
-            "last_month_closed": None,
-            "recent_trades": []  # newest-first
+def _get_month_key(dt: Optional[datetime]=None) -> str:
+    dt = dt or datetime.utcnow()
+    return dt.strftime("%Y-%m")
+
+def _prev_month_key(dt: Optional[datetime]=None) -> str:
+    dt = dt or datetime.utcnow()
+    first = dt.replace(day=1)
+    prev_last = first - timedelta(days=1)
+    return prev_last.strftime("%Y-%m")
+
+# ---------------------------
+# S3 helpers (if enabled)
+# ---------------------------
+def s3_client():
+    if not USE_S3:
+        return None
+    # Create boto3 client with optional custom endpoint
+    if S3_ENDPOINT:
+        return boto3.client(
+            "s3",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_REGION or "us-east-1",
+            endpoint_url=S3_ENDPOINT
+        )
+    else:
+        return boto3.client(
+            "s3",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_REGION or "us-east-1",
+        )
+
+def download_db_from_s3():
+    if not USE_S3:
+        return False
+    client = s3_client()
+    try:
+        logger.info(f"Attempting to download {S3_KEY} from bucket {S3_BUCKET}")
+        tmp = DB_PATH + ".s3tmp"
+        client.download_file(S3_BUCKET, S3_KEY, tmp)
+        # move to DB_PATH
+        os.replace(tmp, DB_PATH)
+        logger.info("Downloaded DB from S3.")
+        return True
+    except Exception as e:
+        logger.info(f"No DB found in S3 or download failed: {e}")
+        return False
+
+def upload_db_to_s3():
+    if not USE_S3:
+        return False
+    client = s3_client()
+    try:
+        logger.info("Uploading DB to S3...")
+        client.upload_file(DB_PATH, S3_BUCKET, S3_KEY)
+        logger.info("Upload to S3 completed.")
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to upload DB to S3: {e}")
+        return False
+
+# ---------------------------
+# File DB helpers (read/write)
+# ---------------------------
+def _default_db():
+    return {
+        "users": {},  # leaderboard users: userId -> { nickname, balance, last_update, trades, wins, period_start_balance }
+        "monthly_winners": {},  # "YYYY-MM" -> { "podium": [...], "closed_at": ISO }
+        "last_month_closed": None,
+        "recent_trades": [],  # newest-first
+        # auth area:
+        "auth": {
+            "users": {},  # username -> { salt, passhash, created_at, nickname_optional }
+            "sessions": {}  # token -> { username, created_at, expires_at }
         }
+    }
+
+def _read_db() -> Dict[str, Any]:
+    # If using S3 and file doesn't exist locally, try to download
+    if USE_S3 and not os.path.exists(DB_PATH):
+        # try downloading
+        download_db_from_s3()
+    if not os.path.exists(DB_PATH):
+        default = _default_db()
+        # create file
         with open(DB_PATH, "w", encoding="utf-8") as f:
             json.dump(default, f, indent=2)
+        # If S3 enabled, upload initial
+        if USE_S3:
+            upload_db_to_s3()
         return default
     with open(DB_PATH, "r", encoding="utf-8") as f:
         try:
-            return json.load(f)
+            data = json.load(f)
+            # Ensure auth area exists (for older files)
+            if "auth" not in data:
+                data.setdefault("auth", {"users": {}, "sessions": {}})
+            return data
         except Exception:
             # Corrupt file fallback
-            return {
-                "users": {},
-                "monthly_winners": {},
-                "last_month_closed": None,
-                "recent_trades": []
-            }
+            return _default_db()
 
 def _write_db(data: Dict[str, Any]):
     # write atomically
@@ -83,17 +186,16 @@ def _write_db(data: Dict[str, Any]):
         # fallback
         with open(DB_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+    # Upload to S3 if configured
+    if USE_S3:
+        try:
+            upload_db_to_s3()
+        except Exception as e:
+            logger.warning(f"Failed to upload DB after write: {e}")
 
-def _get_month_key(dt: Optional[datetime]=None) -> str:
-    dt = dt or datetime.utcnow()
-    return dt.strftime("%Y-%m")
-
-def _prev_month_key(dt: Optional[datetime]=None) -> str:
-    dt = dt or datetime.utcnow()
-    first = dt.replace(day=1)
-    prev_last = first - timedelta(days=1)
-    return prev_last.strftime("%Y-%m")
-
+# ---------------------------
+# Leaderboard helper utilities (unchanged)
+# ---------------------------
 def compute_podium_snapshot(users: Dict[str, Any], top_n=3):
     arr = []
     for uid, u in users.items():
@@ -145,7 +247,38 @@ def compute_user_metrics(user_record: Dict[str, Any]) -> Dict[str, Any]:
         "balance": round(balance, 2)
     }
 
-# Pydantic models
+# ---------------------------
+# Simple password hashing (PBKDF2)
+# ---------------------------
+def _gen_salt() -> str:
+    return secrets.token_hex(16)
+
+def _hash_password(password: str, salt: str, iterations: int = 100_000) -> str:
+    # returns hex digest
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+    return dk.hex()
+
+def verify_password(password: str, salt: str, expected_hex: str) -> bool:
+    return hmac.compare_digest(_hash_password(password, salt), expected_hex)
+
+def generate_token() -> str:
+    return secrets.token_urlsafe(32)
+
+SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", 7 * 24 * 3600))  # default 7 days
+
+# ---------------------------
+# Pydantic models for auth
+# ---------------------------
+class RegisterBody(BaseModel):
+    username: str
+    password: str
+    nickname: Optional[str] = None
+
+class LoginBody(BaseModel):
+    username: str
+    password: str
+
+# Existing models (unchanged)
 class UserUpdate(BaseModel):
     nickname: Optional[str] = None
     balance: Optional[float] = None
@@ -158,7 +291,10 @@ class TradeRecord(BaseModel):
     amount: Optional[float] = None
     nickname: Optional[str] = None  # optional nickname to update on trade
 
-app = FastAPI(title="Kenzies Fridge Leaderboard API")
+# ---------------------------
+# FastAPI app
+# ---------------------------
+app = FastAPI(title="Kenzies Fridge Leaderboard API (with auth & S3 persistence)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -188,6 +324,9 @@ def startup_info():
         logger.info(f"static/*: {files[:30]}")
     except Exception as e:
         logger.info(f"Could not list static dir: {e}")
+    # Ensure DB exists; if S3 enabled, attempt download
+    with _lock:
+        _read_db()  # this will download from S3 if configured
 
 @app.get("/_debug/static-files")
 def debug_static_files():
@@ -203,6 +342,138 @@ def debug_static_files():
         "index_path": index_path,
         "listing_sample": listing[:200] if isinstance(listing, list) else listing,
     }
+
+# ---------------------------
+# Auth helpers
+# ---------------------------
+def _create_auth_user(username: str, password: str, nickname: Optional[str] = None) -> Dict[str, Any]:
+    salt = _gen_salt()
+    hashhex = _hash_password(password, salt)
+    now = _now_iso()
+    return {"salt": salt, "passhash": hashhex, "created_at": now, "nickname": nickname or ""}
+
+def _create_session_for_user(db: Dict[str, Any], username: str) -> str:
+    token = generate_token()
+    now_ts = int(time.time())
+    expires_ts = now_ts + SESSION_TTL_SECONDS
+    db.setdefault("auth", {}).setdefault("sessions", {})[token] = {
+        "username": username,
+        "created_at": _now_iso(),
+        "expires_at": datetime.utcfromtimestamp(expires_ts).isoformat() + "Z"
+    }
+    return token
+
+def _cleanup_expired_sessions(db: Dict[str, Any]):
+    sess = db.setdefault("auth", {}).setdefault("sessions", {})
+    now = datetime.utcnow()
+    to_delete = []
+    for token, info in sess.items():
+        exp = info.get("expires_at")
+        try:
+            if exp and exp.endswith("Z"):
+                exp_dt = datetime.fromisoformat(exp[:-1])
+            else:
+                exp_dt = datetime.fromisoformat(exp)
+        except Exception:
+            exp_dt = None
+        if exp_dt and exp_dt < now:
+            to_delete.append(token)
+    for t in to_delete:
+        del sess[t]
+
+def _get_db_and_user_from_token(authorization: Optional[str]) -> Optional[str]:
+    # expects header "Bearer <token>"
+    if not authorization:
+        return None
+    if not authorization.lower().startswith("bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    with _lock:
+        db = _read_db()
+        _cleanup_expired_sessions(db)
+        sess = db.get("auth", {}).get("sessions", {})
+        info = sess.get(token)
+        if not info:
+            return None
+        return info.get("username")
+
+async def get_current_username(authorization: Optional[str] = Header(None)):
+    username = _get_db_and_user_from_token(authorization)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+    return username
+
+# ---------------------------
+# Register / Login endpoints
+# ---------------------------
+@app.post("/api/register")
+def register(body: RegisterBody):
+    username = (body.username or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="username required")
+    password = (body.password or "")
+    if not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="password required (min 6 chars)")
+    with _lock:
+        db = _read_db()
+        auth_users = db.setdefault("auth", {}).setdefault("users", {})
+        if username in auth_users:
+            raise HTTPException(status_code=409, detail="username already exists")
+        auth_users[username] = _create_auth_user(username, password, body.nickname)
+        # Also create a leaderboard user record (optional)
+        users = db.setdefault("users", {})
+        if username not in users:
+            users[username] = {
+                "nickname": body.nickname or username,
+                "balance": START_BALANCE,
+                "last_update": _now_iso(),
+                "trades": 0,
+                "wins": 0,
+                "period_start_balance": START_BALANCE
+            }
+        _write_db(db)
+        token = _create_session_for_user(db, username)
+        _write_db(db)
+    return {"status": "ok", "username": username, "token": token, "message": "registered and logged in"}
+
+@app.post("/api/login")
+def login(body: LoginBody):
+    username = (body.username or "").strip()
+    password = (body.password or "")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password required")
+    with _lock:
+        db = _read_db()
+        auth_users = db.setdefault("auth", {}).setdefault("users", {})
+        user = auth_users.get(username)
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        salt = user.get("salt")
+        ph = user.get("passhash")
+        if not verify_password(password, salt, ph):
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        # create session
+        token = _create_session_for_user(db, username)
+        _write_db(db)
+    return {"status": "ok", "token": token, "username": username, "expires_in": SESSION_TTL_SECONDS}
+
+@app.post("/api/logout")
+def logout(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="missing token")
+    token = authorization.split(" ", 1)[1].strip()
+    with _lock:
+        db = _read_db()
+        sess = db.setdefault("auth", {}).setdefault("sessions", {})
+        if token in sess:
+            del sess[token]
+            _write_db(db)
+            return {"status": "ok", "message": "logged out"}
+    raise HTTPException(status_code=401, detail="invalid token")
+
+# ---------------------------
+# Existing leaderboard endpoints (slightly adapted to accept username strings as ids)
+# ---------------------------
 
 @app.get("/api/leaderboard")
 def get_leaderboard(limit: int = 100):
@@ -255,7 +526,12 @@ def get_user(user_id: str):
         }
 
 @app.post("/api/user/{user_id}")
-def update_user(user_id: str, upd: UserUpdate):
+def update_user(user_id: str, upd: UserUpdate, username: str = Depends(get_current_username)):
+    # Note: update_user now requires a valid token (only owner can update their record).
+    # If you want open update, remove the dependency.
+    if username != user_id:
+        # Only allow users to update their own user_id record by default
+        raise HTTPException(status_code=403, detail="You can only update your own user record")
     with _lock:
         db = _read_db()
         users = db.setdefault("users", {})
@@ -332,7 +608,10 @@ def update_user(user_id: str, upd: UserUpdate):
     return resp
 
 @app.post("/api/user/{user_id}/trade")
-def record_trade(user_id: str, tr: TradeRecord):
+def record_trade(user_id: str, tr: TradeRecord, username: str = Depends(get_current_username)):
+    # Only the owner can record trades for themselves by default
+    if username != user_id:
+        raise HTTPException(status_code=403, detail="You can only record trades for your own account")
     with _lock:
         db = _read_db()
         users = db.setdefault("users", {})
@@ -496,8 +775,7 @@ def post_close_month():
         db.setdefault("monthly_winners", {})[prev_month] = {"podium": podium, "closed_at": _now_iso()}
         db["last_month_closed"] = _get_month_key()
 
-        # === NEW: reset every user's balance to START_BALANCE for new period ===
-        # Also reset period_start_balance, trades, wins, and update last_update.
+        # === reset every user's balance to START_BALANCE for new period ===
         users = db.get("users", {})
         now_iso = _now_iso()
         for uid, u in users.items():
@@ -505,17 +783,13 @@ def post_close_month():
                 u["balance"] = round(float(START_BALANCE), 2)
             except Exception:
                 u["balance"] = round(START_BALANCE, 2)
-            # reset period start balance for next period
             try:
                 u["period_start_balance"] = round(float(START_BALANCE), 2)
             except Exception:
                 u["period_start_balance"] = round(START_BALANCE, 2)
-            # reset counters for the new month
             u["trades"] = 0
             u["wins"] = 0
-            # stamp last_update so clients know it was updated
             u["last_update"] = now_iso
-        # ===================================================================
 
         _write_db(db)
     return {"status": "closed", "month": prev_month, "podium": podium}
