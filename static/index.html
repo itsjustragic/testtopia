@@ -1032,9 +1032,7 @@ input[type=number]{background:transparent;border:1px solid rgba(255,255,255,0.04
   }, { once: true });
 
 })();
-</script>
 
-<script>
 /* Auth UI logic: register/login + fetch patching
    - Uses /api/register & /api/login
    - Stores token in localStorage.kf_token
@@ -3342,7 +3340,7 @@ setInterval(()=> _updateSellFeetButtonState(), 60*1000);
  * addLiveWinLocal(entry)
  * - entry: { ts, user_id, nickname, result, amount }
  * Adds the entry to the live wins box UI (prepended).
- * NOTE: This function will NOT display user_id as nickname. If nickname is empty, displays "Anon".
+ * Marks local rows with `.local` and stores `data-ts` so polling won't remove them.
  */
 function addLiveWinLocal(entry){
   try{
@@ -3350,6 +3348,11 @@ function addLiveWinLocal(entry){
     if(!list) return;
     const row = document.createElement('div');
     row.className = 'lw-item ' + (entry.result === 'win' ? 'win' : 'lose');
+    row.classList.add('local'); // mark as local so polling won't accidentally remove it
+    // set a stable timestamp id (fall back to now)
+    const ts = entry.ts || (new Date()).toISOString();
+    row.dataset.ts = ts;
+
     // never use user_id as nickname in UI
     const rawNick = (entry.nickname || '').trim();
     const nick = rawNick.length ? rawNick : 'Anon';
@@ -3357,11 +3360,17 @@ function addLiveWinLocal(entry){
     const amt = Number(entry.amount || 0);
     const amtText = (entry.result === 'win') ? `+${abbreviateNumber(amt)}` : `-${abbreviateNumber(amt)}`;
     row.innerHTML = `<div class="left"><div class="ava">${ava}</div><div class="nick" title="${nick}">${nick}</div></div><div class="amt">${amtText}</div>`;
+
+    // Prepend local row
     list.prepend(row);
+
+    // Keep list bounded (including locals)
     while(list.childElementCount > 18) list.lastChild.remove();
+
     computeAndRenderLiveSummaryFromUI();
   }catch(e){ console.warn('addLiveWinLocal', e); }
 }
+
 
 
 
@@ -3412,7 +3421,7 @@ function computeAndRenderLiveSummaryFromUI(){
 /**
  * fetchLiveWinsFromServer(limit)
  * - fetches /api/live-wins?limit=N and updates UI (full replace)
- * NOTE: Will not display user_id as nickname; falls back to 'Anon'.
+ * Preserves any recent local entries (class `.local`) that the server doesn't return yet.
  */
 let _lw_polling = null;
 async function fetchLiveWinsFromServer(limit = 12){
@@ -3421,13 +3430,25 @@ async function fetchLiveWinsFromServer(limit = 12){
     if(!r.ok) return;
     const json = await r.json();
     if(!json) return;
-    const recent = json.recent_trades || [];
+
     const list = document.getElementById('liveWinsList');
     if(!list) return;
+
+    // capture local rows and their ts to preserve them if server hasn't seen them yet
+    const localRows = Array.from(list.querySelectorAll('.lw-item.local'))
+      .map(el => ({ ts: el.dataset.ts || '', html: el.outerHTML }));
+
+    // build a set of server TSs for dedupe (some server entries may have ts)
+    const serverTsSet = new Set();
+    const recent = json.recent_trades || [];
+
+    // Replace list with server rows
     list.innerHTML = '';
     recent.slice(0,18).forEach(entry => {
       const row = document.createElement('div');
       row.className = 'lw-item ' + (entry.result === 'win' ? 'win' : 'lose');
+      // Annotate with server ts (if present) so we can dedupe
+      if(entry.ts) row.dataset.ts = entry.ts;
       // IMPORTANT: never display user_id as nickname
       const nickRaw = (entry.nickname || '').trim();
       const nick = nickRaw.length ? nickRaw : 'Anon';
@@ -3435,8 +3456,33 @@ async function fetchLiveWinsFromServer(limit = 12){
       const amt = Number(entry.amount || 0);
       const amtText = (entry.result === 'win') ? `+${abbreviateNumber(amt)}` : `-${abbreviateNumber(amt)}`;
       row.innerHTML = `<div class="left"><div class="ava">${ava}</div><div class="nick" title="${nick}">${nick}</div></div><div class="amt">${amtText}</div>`;
+
+      if(row.dataset.ts) serverTsSet.add(row.dataset.ts);
+
       list.appendChild(row);
     });
+
+    // Re-insert any local rows that server doesn't already contain (most recent first)
+    if(localRows && localRows.length){
+      // reverse so the newest local ends up at top
+      for(const lr of localRows.slice().reverse()){
+        if(lr.ts && serverTsSet.has(lr.ts)) continue; // server already returned it -> skip
+        const temp = document.createElement('div');
+        temp.innerHTML = lr.html;
+        const node = temp.firstChild;
+        if(node){
+          // ensure it's still marked .local
+          node.classList.add('local');
+          // prepend
+          list.insertBefore(node, list.firstChild);
+        }
+      }
+    }
+
+    // keep bounded to 18 rows (including locals we reinserted)
+    while(list.childElementCount > 18) list.lastChild.remove();
+
+    // Render summary
     const container = document.getElementById('lw-summary-rows');
     container.innerHTML = '';
     if(json.summary && typeof json.summary === 'object'){
@@ -3450,11 +3496,15 @@ async function fetchLiveWinsFromServer(limit = 12){
         container.appendChild(div);
       });
     } else {
+      // fallback: compute from UI (includes locals)
       computeAndRenderLiveSummaryFromUI();
     }
+
     const lf = document.getElementById('lw-last-refresh');
     lf.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-  }catch(e){}
+  }catch(e){
+    console.warn('fetchLiveWinsFromServer error', e);
+  }
 }
 
 function startLiveWinsPolling(){
