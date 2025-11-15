@@ -284,18 +284,35 @@ def _iso_to_dt(s: Optional[str]):
 # ---------------------------
 def _get_user_pg(conn, username: str) -> Optional[Dict[str, Any]]:
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute("SELECT username,nickname,balance,last_update,trades,wins,period_start_balance FROM users WHERE username=%s;", (username,))
+        cur.execute(
+            "SELECT username, nickname, balance, last_update, trades, wins, period_start_balance "
+            "FROM users WHERE username = %s;",
+            (username,)
+        )
         r = cur.fetchone()
         if not r:
             return None
+
+        # Safely convert numeric/database values to Python primitives
+        balance = float(r.get("balance")) if r.get("balance") is not None else float(START_BALANCE)
+        period_start_balance = (
+            float(r.get("period_start_balance"))
+            if r.get("period_start_balance") is not None
+            else float(START_BALANCE)
+        )
+        last_update = (r.get("last_update").isoformat() + "Z") if r.get("last_update") else None
+        trades = int(r.get("trades") or 0)
+        wins = int(r.get("wins") or 0)
+
         return {
             "nickname": r.get("nickname") or "",
-            "balance": float(r.get("balance") if r.get("balance') is not None else START_BALANCE) if False else float(r.get("balance") or START_BALANCE),
-            "last_update": (r.get("last_update").isoformat()+"Z") if r.get("last_update") else None,
-            "trades": int(r.get("trades") or 0),
-            "wins": int(r.get("wins") or 0),
-            "period_start_balance": float(r.get("period_start_balance") or START_BALANCE)
+            "balance": balance,
+            "last_update": last_update,
+            "trades": trades,
+            "wins": wins,
+            "period_start_balance": period_start_balance,
         }
+
 
 def _upsert_user_pg(conn, username: str, user_obj: Dict[str, Any]):
     with conn.cursor() as cur:
