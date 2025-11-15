@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 import logging
 import shutil
 import decimal
+from datetime import timezone
 
 # Postgres client
 try:
@@ -447,7 +448,7 @@ def _get_session_username_pg(conn, token: str) -> Optional[str]:
         if not r:
             return None
         exp = r.get("expires_at")
-        if exp and exp < datetime.utcnow():
+        if exp and exp < datetime.now(timezone.utc):
             # expired: delete and return None
             with conn.cursor() as cur2:
                 cur2.execute("DELETE FROM sessions WHERE token=%s;", (token,))
