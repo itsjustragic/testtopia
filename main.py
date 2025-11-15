@@ -2,7 +2,7 @@
 """
 FastAPI leaderboard backend for Kenzies Fridge (Postgres primary, local-seed fallback).
 Schema-based Postgres persistence:
- - users (username PK)
+ - users (username PK) 
  - auth_users (username PK)
  - sessions (token PK)
  - recent_trades (id PK)
